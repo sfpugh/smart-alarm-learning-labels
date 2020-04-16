@@ -24,6 +24,7 @@ credentials = service_account.Credentials.from_service_account_file('vibrant-sou
 alarm_settings_df = pd.read_gbq('''
     SELECT *
     FROM `vibrant-sound-266816.project_tables.pugh_spo2alarmsettings`
+    LIMIT 6000
 ''', project_id=credentials.project_id, credentials=credentials)
 
 
@@ -48,7 +49,6 @@ with open("RECORDS-numerics", "r") as rec_file:
 
             # extract spo2 alarm settings for subject
             lo_set = alarm_settings_df[(alarm_settings_df.SUBJECT_ID == subject_id) & (alarm_settings_df.ITEMID == SPO2_LO)].reset_index(drop=True)
-            hi_set = alarm_settings_df[(alarm_settings_df.SUBJECT_ID == subject_id) & (alarm_settings_df.ITEMID == SPO2_HI)].reset_index(drop=True)
 
             # extract alarms
             spo2_alarmON = [i for (i,s) in enumerate(spo2) if s < lo_set.iloc[np.where(lo_set.CHARTTIME <= record.base_datetime + datetime.timedelta(seconds=i))[0].max(), VALUENUM]]
@@ -62,12 +62,14 @@ with open("RECORDS-numerics", "r") as rec_file:
                     start = t
                 elif i+1 == len(spo2_alarmON):  # for last alarm
                     spo2_alarms_df = spo2_alarms_df.append({'alarm_start':start, 'alarm_end':spo2_alarmON[i], 'mimic3wdb_matched_ref':rec}, ignore_index=True)
+
         except Exception as e:
             print('EXCEPTION occurred at line ' + str(sys.exc_info()[2].tb_lineno) + ' for record ' + rec)
             print('\t' + str(e) + '\n')
 
         
-## export the spo2 alarm data to pickle file
-spo2_alarms_df.to_pickle('./spo2_alarms_df.pkl')
+## export the spo2 alarm data
+#spo2_alarms_df.to_csv('./spo2_alarms_df_subset.csv')
+spo2_alarms_df.to_gbq(destination_table='project_tables.pugh_spo2_alarms_subset', project_id=credentials.project_id, credentials=credentials)
 
 print('elapsed time: ' + str(time.time() - start) + 's')
