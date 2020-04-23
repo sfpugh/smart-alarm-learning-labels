@@ -9,7 +9,7 @@ NOT_SUPPRESSIBLE = 0
 SUPPRESSIBLE = 1
 
 ## Read in spo2 alarm data
-mimiciii_spo2alarms = pd.read_pickle('./smart-alarm-2.0-data/spo2_alarms_df_v4.20.pkl')
+mimiciii_spo2alarms = pd.read_pickle('./spo2_alarm_data')
 print('There are ' + str(mimiciii_spo2alarms.shape[0]) + ' total alarms in the train data set\n')
 
 ## Define training data
