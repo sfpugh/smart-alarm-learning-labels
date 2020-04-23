@@ -1,4 +1,4 @@
-from snorkel.labeling import labeling_function, PandasLFApplier, LFAnalysis
+from snorkel.labeling import labeling_function
 from snorkel.preprocess import preprocessor
 import pandas as pd
 import numpy as np
