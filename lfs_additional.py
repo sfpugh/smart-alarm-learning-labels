@@ -172,4 +172,3 @@ def spo2_30_percent_increase(alarm_start_index, alarm_end_index, spo2_waveform):
         else:  # never enter this case if data format is correct
             labels.append(0)
     return labels
-
