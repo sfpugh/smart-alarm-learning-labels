@@ -44,40 +44,47 @@ def retrieve_rr_waveform(x):
     
     return x
 
-## Suppressible guidelines
+# If the alarm duration is less than or equal to 15 seconds then the alarm is suppressible, otherwise abstain
 @labeling_function()
 def lf_alarm_too_short(x):
     return SUPPRESSIBLE if x.alarm_end - x.alarm_start + 1 <= 15  else ABSTAIN
 
+# If SpO2 level increases/recovers by at least 20 percentage points within 10 seconds of alarm start then the alarm is suppressible, otherwise abstain 
 @labeling_function(pre=[retrieve_spo2_waveform])
 def lf_immediate_recovery_10s(x):
     return SUPPRESSIBLE if abs(x.spo2[x.alarm_start] - x.spo2[x.alarm_start+10]) > 20 else ABSTAIN
 
+# If SpO2 level increases/recovers by at least 30 percentage points within 15 seconds of alarm start then the alarm is suppressible, otherwise abstain 
 @labeling_function(pre=[retrieve_spo2_waveform])
 def lf_immediate_recovery_15s(x):
     return SUPPRESSIBLE if abs(x.spo2[x.alarm_start] - x.spo2[x.alarm_start+15]) > 30 else ABSTAIN
 
-## Not-suppressible guidelines
+# If SpO2 level stays within range (80,85] for longer than 120 seconds since alarm start then the alarm is not suppressible, otherwise abstain
 @labeling_function(pre=[retrieve_spo2_waveform])
 def lf_spo2_below85_over120s(x):
     return NOT_SUPPRESSIBLE if np.all( (80 < x.spo2[x.alarm_start:x.alarm_start+120+1]) & (x.spo2[x.alarm_start:x.alarm_start+120+1] <= 85) ) else ABSTAIN
 
+# If SpO2 level stays within range (70,80] for longer than 100 seconds since alarm start then the alarm is not suppressible, otherwise abstain
 @labeling_function(pre=[retrieve_spo2_waveform])
 def lf_spo2_below80_over100s(x):
     return NOT_SUPPRESSIBLE if np.all( (70 < x.spo2[x.alarm_start:x.alarm_start+100+1]) & (x.spo2[x.alarm_start:x.alarm_start+100+1] <= 80) ) else ABSTAIN
 
+# If SpO2 level stays within range (60,70] for longer than 90 seconds since alarm start then the alarm is not suppressible, otherwise abstain
 @labeling_function(pre=[retrieve_spo2_waveform])
 def lf_spo2_below70_over90s(x):
     return NOT_SUPPRESSIBLE if np.all( (60 < x.spo2[x.alarm_start:x.alarm_start+90+1]) & (x.spo2[x.alarm_start:x.alarm_start+90+1] <= 70) ) else ABSTAIN
 
+# If SpO2 level stays within range (50,60] for longer than 60 seconds since alarm start then the alarm is not suppressible, otherwise abstain
 @labeling_function(pre=[retrieve_spo2_waveform])
 def lf_spo2_below60_over60s(x):
     return NOT_SUPPRESSIBLE if np.all( (50 < x.spo2[x.alarm_start:x.alarm_start+60+1]) & (x.spo2[x.alarm_start:x.alarm_start+60+1] <= 60) ) else ABSTAIN
 
+# If SpO2 level stays within range (0,50] for longer than 30 seconds since alarm start then the alarm is not suppressible, otherwise abstain
 @labeling_function(pre=[retrieve_spo2_waveform])
 def lf_spo2_below50_over30s(x):
     return NOT_SUPPRESSIBLE if np.all( x.spo2[x.alarm_start:x.alarm_start+30+1] <= 50 ) else ABSTAIN
 
+# If the alarm duration is greater than or equal to 60 seconds then the alarm is not suppressible, otherwise abstain
 @labeling_function()
 def lf_alarm_too_long(x):
     return NOT_SUPPRESSIBLE if x.alarm_end - x.alarm_start >= 60 else ABSTAIN
