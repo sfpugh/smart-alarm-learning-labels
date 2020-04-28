@@ -9,6 +9,9 @@ ABSTAIN = -1
 NOT_SUPPRESSIBLE = 0
 SUPPRESSIBLE = 1
 
+HR_AGE_FACTOR = 1
+RR_AGE_FACTOR = 1
+
 @preprocessor()
 def retrieve_spo2_waveform(x):
     rec_path = x.mimic3wdb_matched_ref.split('/')
@@ -124,37 +127,39 @@ def lf_spo2_below50_over30s(x):
     return NOT_SUPPRESSIBLE if np.all( x.spo2[x.alarm_start:x.alarm_start+30+1] <= 50 ) else ABSTAIN
 
 
-# If HR below 50 for longer than 120 seconds since alarm start then the alarm is not suppressible, otherwise abstain
+# If HR below 50 * age factor for longer than 120 seconds since alarm start then the alarm is not suppressible, otherwise abstain
 @labeling_function(pre=[retrieve_hr_waveform])
 def lf_hr_below50_over120s(x):
-    return ABSTAIN
+    return NOT_SUPPRESSIBLE if np.all((40 * HR_AGE_FACTOR < x.hr[x.alarm_start:x.alarm_start+120+1]) & (x.hr[x.alarm_start:x.alarm_start+120+1] <= 50 * HR_AGE_FACTOR)) else ABSTAIN
 
 
-# If HR below 40 for longer than 60 seconds since alarm start then the alarm is not suppressible, otherwise abstain
+# If HR below 40 * age factor for longer than 60 seconds since alarm start then the alarm is not suppressible, otherwise abstain
 @labeling_function(pre=[retrieve_hr_waveform])
 def lf_hr_below40_over60s(x):
-    return ABSTAIN
+    return NOT_SUPPRESSIBLE if np.all((30 * HR_AGE_FACTOR < x.hr[x.alarm_start:x.alarm_start+60+1]) & (x.hr[x.alarm_start:x.alarm_start+60+1] <= 40 * HR_AGE_FACTOR)) else ABSTAIN
 
 
-# If HR below 30 for any duration since alarm start then the alarm is not suppressible, otherwise abstain
+# If HR below 30 * age factor for any duration since alarm start then the alarm is not suppressible, otherwise abstain
 @labeling_function(pre=[retrieve_hr_waveform])
 def lf_hr_below30(x):
-    return ABSTAIN
+    return NOT_SUPPRESSIBLE if np.any(x.hr[x.alarm_start:x.alarm_end] <= 30 * HR_AGE_FACTOR) else ABSTAIN
 
 
-# If RR below 50 for longer than 120 seconds since alarm start then the alarm is not suppressible, otherwise abstain
+# If RR below 50 * age factor for longer than 120 seconds since alarm start then the alarm is not suppressible, otherwise abstain
 @labeling_function(pre=[retrieve_rr_waveform])
 def lf_rr_below50_over120s(x):
-    return ABSTAIN
+    return NOT_SUPPRESSIBLE if np.all((40 * RR_AGE_FACTOR < x.resp[x.alarm_start:x.alarm_start+120+1]) & (x.resp[x.alarm_start:x.alarm_start+120+1] <= 50 * RR_AGE_FACTOR)) else ABSTAIN
 
 
-# If RR below 40 for longer than 60 seconds since alarm start then the alarm is not suppressible, otherwise abstain
+# If RR below 40 * age factor for longer than 60 seconds since alarm start then the alarm is not suppressible, otherwise abstain
 @labeling_function(pre=[retrieve_rr_waveform])
 def lf_rr_below40_over60s(x):
-    return ABSTAIN
+    return NOT_SUPPRESSIBLE if np.all((30 * RR_AGE_FACTOR < x.resp[x.alarm_start:x.alarm_start+60+1]) & (x.resp[x.alarm_start:x.alarm_start+60+1] <= 40 * RR_AGE_FACTOR)) else ABSTAIN
 
 
-# If RR below 30 for any duration since alarm start then the alarm is not suppressible, otherwise abstain
+# If RR below 30 * age factor for any duration since alarm start then the alarm is not suppressible, otherwise abstain
 @labeling_function(pre=[retrieve_rr_waveform])
 def lf_rr_below30(x):
-    return ABSTAIN
+    return NOT_SUPPRESSIBLE if np.any(x.resp[x.alarm_start:x.alarm_end] <= 30 * RR_AGE_FACTOR) else ABSTAIN
+
+
