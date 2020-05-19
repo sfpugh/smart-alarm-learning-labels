@@ -12,10 +12,33 @@ ABSTAIN = -1
 NOT_SUPPRESSIBLE = 0
 SUPPRESSIBLE = 1
 
-MP_WINDOW = 3000 # matrix profile window size
+MP_WINDOW = 120 # matrix profile window size
 MP_THRESHOLD = 10  # matrix profile threshold, decide outlier if > threshold
 
 np.seterr(divide='ignore', invalid='ignore')
+
+"""The distance profile is computed by mass() and massStomp() subroutine, which normalize the profile value
+    by dividing standard deviation of the moving window, causing error when the window has std = 0.
+    To avoid normalization, please edit mass() in matrixprofile.utils.py to:
+    
+    def mass(query,ts, normalize=False):
+        #query_normalized = zNormalize(np.copy(query))
+        m = len(query)
+        q_mean = np.mean(query)
+        q_std = np.std(query)
+        mean, std = movmeanstd(ts,m)
+        dot = slidingDotProduct(query,ts)
+        #res = np.sqrt(2*m*(1-(dot-m*mean*q_mean)/(m*std*q_std)))
+        if normalize:
+            res = 2*m*(1-(dot-m*mean*q_mean)/(m*std*q_std))
+        else:
+            res = 2*m*(1-(dot-m*mean*q_mean)/m)
+    
+        return res
+        
+    And do the same to massStomp()
+"""
+
 
 @preprocessor()
 def retrieve_spo2_mp(x):
