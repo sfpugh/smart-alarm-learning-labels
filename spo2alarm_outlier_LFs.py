@@ -40,22 +40,22 @@ def lf_outlier_120(x):
 
 @labeling_function(pre=[retrieve_spo2_mp])
 def lf_outlier_100(x):
-    return NOT_SUPPRESSIBLE if np.any(x.spo2_mp[x.alarm_start - 100: x.alarm_start + 100] > MP_THRESHOLD) else ABSTAIN
+    return SUPPRESSIBLE if np.any(x.spo2_mp[x.alarm_start - 100: x.alarm_start + 100] > MP_THRESHOLD) else ABSTAIN
 
 
 @labeling_function(pre=[retrieve_spo2_mp])
 def lf_outlier_90(x):
-    return NOT_SUPPRESSIBLE if np.any(x.spo2_mp[x.alarm_start - 90: x.alarm_start + 90] > MP_THRESHOLD) else ABSTAIN
+    return SUPPRESSIBLE if np.any(x.spo2_mp[x.alarm_start - 90: x.alarm_start + 90] > MP_THRESHOLD) else ABSTAIN
 
 
 @labeling_function(pre=[retrieve_spo2_mp])
 def lf_outlier_60(x):
-    return NOT_SUPPRESSIBLE if np.any(x.spo2_mp[x.alarm_start - 60: x.alarm_start + 60] > MP_THRESHOLD) else ABSTAIN
+    return SUPPRESSIBLE if np.any(x.spo2_mp[x.alarm_start - 60: x.alarm_start + 60] > MP_THRESHOLD) else ABSTAIN
 
 
 @labeling_function(pre=[retrieve_spo2_mp])
 def lf_outlier_30(x):
-    return NOT_SUPPRESSIBLE if np.any(x.spo2_mp[x.alarm_start - 30: x.alarm_start + 30] > MP_THRESHOLD) else ABSTAIN
+    return SUPPRESSIBLE if np.any(x.spo2_mp[x.alarm_start - 30: x.alarm_start + 30] > MP_THRESHOLD) else ABSTAIN
 
 
 # testing on one time series to see if matrix profile works
