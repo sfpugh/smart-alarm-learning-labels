@@ -59,7 +59,7 @@ def retrieve_spo2_mp(x):
 
 @labeling_function(pre=[retrieve_spo2_mp])
 def lf_outlier_120(x):
-    return NOT_SUPPRESSIBLE if np.any(x.spo2_mp[x.alarm_start - 120: x.alarm_start + 120] > MP_THRESHOLD) else ABSTAIN
+    return SUPPRESSIBLE if np.any(x.spo2_mp[x.alarm_start - 120: x.alarm_start + 120] > MP_THRESHOLD) else ABSTAIN
 
 
 @labeling_function(pre=[retrieve_spo2_mp])
