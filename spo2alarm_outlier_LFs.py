@@ -12,7 +12,8 @@ ABSTAIN = -1
 NOT_SUPPRESSIBLE = 0
 SUPPRESSIBLE = 1
 
-MP_WINDOW = 120 # matrix profile window size
+# manually tune the parameters:
+MP_WINDOW = 500  # matrix profile window size
 MP_THRESHOLD = 10  # matrix profile threshold, decide outlier if > threshold
 
 np.seterr(divide='ignore', invalid='ignore')
