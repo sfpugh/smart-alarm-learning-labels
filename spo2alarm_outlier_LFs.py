@@ -323,8 +323,8 @@ def lf_outlier_resp_20(x):
 
 # test the implementation on one spo2/hr/resp time series
 if __name__ == "__main__":
-    w = 20
-    t = 2
+    w = 30
+    t = 3
     mimiciii_spo2alarms = pd.read_pickle('./spo2_alarms_df_v4.20.pkl')
     x = mimiciii_spo2alarms.iloc[0]
     x = retrieve_rr_waveform(x)
