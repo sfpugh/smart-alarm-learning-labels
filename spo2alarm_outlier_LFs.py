@@ -87,104 +87,264 @@ def retrieve_spo2_waveform(x):
 
     return x
 
+
+# Same preprocessor retrieving HR waveform
+@preprocessor()
+def retrieve_hr_waveform(x):
+    rec_path = x.mimic3wdb_matched_ref.split('/')
+    pb_dir = MIMIC3WDB + rec_path[0] + '/' + rec_path[1]
+
+    record = wfdb.rdrecord(rec_path[2], channel_names=['HR'], pb_dir=pb_dir)
+    x.hr = record.p_signal[:, 0]
+
+    return x
+
+
+# Same preprocessor retrieving RR waveform
+@preprocessor()
+def retrieve_rr_waveform(x):
+    rec_path = x.mimic3wdb_matched_ref.split('/')
+    pb_dir = MIMIC3WDB + rec_path[0] + '/' + rec_path[1]
+
+    record = wfdb.rdrecord(rec_path[2], channel_names=['RESP'], pb_dir=pb_dir)
+    x.resp = record.p_signal[:, 0]
+
+    return x
+
+
 # All labeling functions have thresholds tuned such that %outlier = 5%
+# SpO2 outlier detection
 @labeling_function(pre=[retrieve_spo2_waveform])
-def lf_outlier_120_window(x):
+def lf_outlier_spo2_120(x):
     x.spo2_mp, _ = compute_mp(x.spo2, window=120, threshold=8.4)
     return SUPPRESSIBLE if np.any(interval_centered_at(x.spo2_mp, length=120, center=x.alarm_start) > 8.4) else ABSTAIN
 
 
 @labeling_function(pre=[retrieve_spo2_waveform])
-def lf_outlier_110_window(x):
+def lf_outlier_spo2_110(x):
     x.spo2_mp, _ = compute_mp(x.spo2, window=110, threshold=7.8)
     return SUPPRESSIBLE if np.any(interval_centered_at(x.spo2_mp, length=110, center=x.alarm_start) > 7.8) else ABSTAIN
 
 
 @labeling_function(pre=[retrieve_spo2_waveform])
-def lf_outlier_100_window(x):
+def lf_outlier_spo2_100(x):
     x.spo2_mp, _ = compute_mp(x.spo2, window=100, threshold=7.2)
     return SUPPRESSIBLE if np.any(interval_centered_at(x.spo2_mp, length=100, center=x.alarm_start) > 7.2) else ABSTAIN
 
 
 @labeling_function(pre=[retrieve_spo2_waveform])
-def lf_outlier_90_window(x):
+def lf_outlier_spo2_90(x):
     x.spo2_mp, _ = compute_mp(x.spo2, window=90, threshold=6.6)
     return SUPPRESSIBLE if np.any(interval_centered_at(x.spo2_mp, length=90, center=x.alarm_start) > 6.6) else ABSTAIN
 
 
 @labeling_function(pre=[retrieve_spo2_waveform])
-def lf_outlier_80_window(x):
+def lf_outlier_spo2_80(x):
     x.spo2_mp, _ = compute_mp(x.spo2, window=80, threshold=6)
     return SUPPRESSIBLE if np.any(interval_centered_at(x.spo2_mp, length=80, center=x.alarm_start) > 6) else ABSTAIN
 
 
 @labeling_function(pre=[retrieve_spo2_waveform])
-def lf_outlier_70_window(x):
+def lf_outlier_spo2_70(x):
     x.spo2_mp, _ = compute_mp(x.spo2, window=70, threshold=5.3)
     return SUPPRESSIBLE if np.any(interval_centered_at(x.spo2_mp, length=70, center=x.alarm_start) > 5.3) else ABSTAIN
 
 
 @labeling_function(pre=[retrieve_spo2_waveform])
-def lf_outlier_60_window(x):
+def lf_outlier_spo2_60(x):
     x.spo2_mp, _ = compute_mp(x.spo2, window=60, threshold=4.6)
     return SUPPRESSIBLE if np.any(interval_centered_at(x.spo2_mp, length=60, center=x.alarm_start) > 4.6) else ABSTAIN
 
 
 @labeling_function(pre=[retrieve_spo2_waveform])
-def lf_outlier_50_window(x):
+def lf_outlier_spo2_50(x):
     x.spo2_mp, _ = compute_mp(x.spo2, window=50, threshold=3.8)
     return SUPPRESSIBLE if np.any(interval_centered_at(x.spo2_mp, length=50, center=x.alarm_start) > 3.8) else ABSTAIN
 
 
 @labeling_function(pre=[retrieve_spo2_waveform])
-def lf_outlier_40_window(x):
+def lf_outlier_spo2_40(x):
     x.spo2_mp, _ = compute_mp(x.spo2, window=40, threshold=2.9)
     return SUPPRESSIBLE if np.any(interval_centered_at(x.spo2_mp, length=40, center=x.alarm_start) > 2.9) else ABSTAIN
 
 
 @labeling_function(pre=[retrieve_spo2_waveform])
-def lf_outlier_30_window(x):
+def lf_outlier_spo2_30(x):
     x.spo2_mp, _ = compute_mp(x.spo2, window=30, threshold=2.1)
     return SUPPRESSIBLE if np.any(interval_centered_at(x.spo2_mp, length=30, center=x.alarm_start) > 2.1) else ABSTAIN
 
 
 @labeling_function(pre=[retrieve_spo2_waveform])
-def lf_outlier_20_window(x):
+def lf_outlier_spo2_20(x):
     x.spo2_mp, _ = compute_mp(x.spo2, window=20, threshold=1)
     return SUPPRESSIBLE if np.any(interval_centered_at(x.spo2_mp, length=20, center=x.alarm_start) > 1) else ABSTAIN
 
 
 # one function with very long window
 @labeling_function(pre=[retrieve_spo2_waveform])
-def lf_outlier_3000_window(x):
+def lf_outlier_spo2_3000(x):
     x.spo2_mp, _ = compute_mp(x.spo2, window=3000, threshold=72)
     return SUPPRESSIBLE if np.any(interval_centered_at(x.spo2_mp, length=3000, center=x.alarm_start) > 72) else ABSTAIN
 
 
-# test the implementation on one spo2 time series
+# HR outlier detection
+@labeling_function(pre=[retrieve_hr_waveform])
+def lf_outlier_hr_120(x):
+    x.hr_mp, _ = compute_mp(x.hr, window=120, threshold=9)
+    return SUPPRESSIBLE if np.any(interval_centered_at(x.hr_mp, length=120, center=x.alarm_start) > 9) else ABSTAIN
+
+
+@labeling_function(pre=[retrieve_hr_waveform])
+def lf_outlier_hr_110(x):
+    x.hr_mp, _ = compute_mp(x.hr, window=110, threshold=8.5)
+    return SUPPRESSIBLE if np.any(interval_centered_at(x.hr_mp, length=110, center=x.alarm_start) > 8.5) else ABSTAIN
+
+
+@labeling_function(pre=[retrieve_hr_waveform])
+def lf_outlier_hr_100(x):
+    x.hr_mp, _ = compute_mp(x.hr, window=100, threshold=7.8)
+    return SUPPRESSIBLE if np.any(interval_centered_at(x.hr_mp, length=100, center=x.alarm_start) > 7.8) else ABSTAIN
+
+
+@labeling_function(pre=[retrieve_hr_waveform])
+def lf_outlier_hr_90(x):
+    x.hr_mp, _ = compute_mp(x.hr, window=90, threshold=7.3)
+    return SUPPRESSIBLE if np.any(interval_centered_at(x.hr_mp, length=90, center=x.alarm_start) > 7.3) else ABSTAIN
+
+
+@labeling_function(pre=[retrieve_hr_waveform])
+def lf_outlier_hr_80(x):
+    x.hr_mp, _ = compute_mp(x.hr, window=80, threshold=6.7)
+    return SUPPRESSIBLE if np.any(interval_centered_at(x.hr_mp, length=80, center=x.alarm_start) > 6.7) else ABSTAIN
+
+
+@labeling_function(pre=[retrieve_hr_waveform])
+def lf_outlier_hr_70(x):
+    x.hr_mp, _ = compute_mp(x.hr, window=70, threshold=6)
+    return SUPPRESSIBLE if np.any(interval_centered_at(x.hr_mp, length=70, center=x.alarm_start) > 6) else ABSTAIN
+
+
+@labeling_function(pre=[retrieve_hr_waveform])
+def lf_outlier_hr_60(x):
+    x.hr_mp, _ = compute_mp(x.hr, window=60, threshold=5.4)
+    return SUPPRESSIBLE if np.any(interval_centered_at(x.hr_mp, length=60, center=x.alarm_start) > 5.4) else ABSTAIN
+
+
+@labeling_function(pre=[retrieve_hr_waveform])
+def lf_outlier_hr_50(x):
+    x.hr_mp, _ = compute_mp(x.hr, window=50, threshold=4.7)
+    return SUPPRESSIBLE if np.any(interval_centered_at(x.hr_mp, length=50, center=x.alarm_start) > 4.7) else ABSTAIN
+
+
+@labeling_function(pre=[retrieve_hr_waveform])
+def lf_outlier_hr_40(x):
+    x.hr_mp, _ = compute_mp(x.hr, window=40, threshold=3.9)
+    return SUPPRESSIBLE if np.any(interval_centered_at(x.hr_mp, length=40, center=x.alarm_start) > 3.9) else ABSTAIN
+
+
+@labeling_function(pre=[retrieve_hr_waveform])
+def lf_outlier_hr_30(x):
+    x.hr_mp, _ = compute_mp(x.hr, window=30, threshold=3.1)
+    return SUPPRESSIBLE if np.any(interval_centered_at(x.hr_mp, length=30, center=x.alarm_start) > 3.1) else ABSTAIN
+
+
+@labeling_function(pre=[retrieve_hr_waveform])
+def lf_outlier_hr_20(x):
+    x.hr_mp, _ = compute_mp(x.hr, window=20, threshold=2.1)
+    return SUPPRESSIBLE if np.any(interval_centered_at(x.hr_mp, length=20, center=x.alarm_start) > 2.1) else ABSTAIN
+
+
+# RR outlier detection
+@labeling_function(pre=[retrieve_rr_waveform])
+def lf_outlier_resp_120(x):
+    x.resp_mp, _ = compute_mp(x.resp, window=120, threshold=8.7)
+    return SUPPRESSIBLE if np.any(interval_centered_at(x.resp_mp, length=120, center=x.alarm_start) > 8.7) else ABSTAIN
+
+
+@labeling_function(pre=[retrieve_rr_waveform])
+def lf_outlier_resp_110(x):
+    x.resp_mp, _ = compute_mp(x.resp, window=110, threshold=8.1)
+    return SUPPRESSIBLE if np.any(interval_centered_at(x.resp_mp, length=110, center=x.alarm_start) > 8.1) else ABSTAIN
+
+
+@labeling_function(pre=[retrieve_rr_waveform])
+def lf_outlier_resp_100(x):
+    x.resp_mp, _ = compute_mp(x.resp, window=100, threshold=7.6)
+    return SUPPRESSIBLE if np.any(interval_centered_at(x.resp_mp, length=100, center=x.alarm_start) > 7.6) else ABSTAIN
+
+
+@labeling_function(pre=[retrieve_rr_waveform])
+def lf_outlier_resp_90(x):
+    x.resp_mp, _ = compute_mp(x.resp, window=90, threshold=7.1)
+    return SUPPRESSIBLE if np.any(interval_centered_at(x.resp_mp, length=90, center=x.alarm_start) > 7.1) else ABSTAIN
+
+
+@labeling_function(pre=[retrieve_rr_waveform])
+def lf_outlier_resp_80(x):
+    x.resp_mp, _ = compute_mp(x.resp, window=80, threshold=6.5)
+    return SUPPRESSIBLE if np.any(interval_centered_at(x.resp_mp, length=80, center=x.alarm_start) > 6.5) else ABSTAIN
+
+
+@labeling_function(pre=[retrieve_rr_waveform])
+def lf_outlier_resp_70(x):
+    x.resp_mp, _ = compute_mp(x.resp, window=70, threshold=6)
+    return SUPPRESSIBLE if np.any(interval_centered_at(x.resp_mp, length=70, center=x.alarm_start) > 6) else ABSTAIN
+
+
+@labeling_function(pre=[retrieve_rr_waveform])
+def lf_outlier_resp_60(x):
+    x.resp_mp, _ = compute_mp(x.resp, window=60, threshold=5.4)
+    return SUPPRESSIBLE if np.any(interval_centered_at(x.resp_mp, length=60, center=x.alarm_start) > 5.4) else ABSTAIN
+
+
+@labeling_function(pre=[retrieve_rr_waveform])
+def lf_outlier_resp_50(x):
+    x.resp_mp, _ = compute_mp(x.resp, window=50, threshold=4.7)
+    return SUPPRESSIBLE if np.any(interval_centered_at(x.resp_mp, length=50, center=x.alarm_start) > 4.7) else ABSTAIN
+
+
+@labeling_function(pre=[retrieve_rr_waveform])
+def lf_outlier_resp_40(x):
+    x.resp_mp, _ = compute_mp(x.resp, window=40, threshold=3.9)
+    return SUPPRESSIBLE if np.any(interval_centered_at(x.resp_mp, length=40, center=x.alarm_start) > 3.9) else ABSTAIN
+
+
+@labeling_function(pre=[retrieve_rr_waveform])
+def lf_outlier_resp_30(x):
+    x.resp_mp, _ = compute_mp(x.resp, window=30, threshold=3)
+    return SUPPRESSIBLE if np.any(interval_centered_at(x.resp_mp, length=30, center=x.alarm_start) > 3) else ABSTAIN
+
+
+@labeling_function(pre=[retrieve_rr_waveform])
+def lf_outlier_resp_20(x):
+    x.resp_mp, _ = compute_mp(x.resp, window=20, threshold=2)
+    return SUPPRESSIBLE if np.any(interval_centered_at(x.resp_mp, length=20, center=x.alarm_start) > 2) else ABSTAIN
+
+
+# test the implementation on one spo2/hr/resp time series
 if __name__ == "__main__":
-    w = 120
-    t = 8.4
+    w = 20
+    t = 2
     mimiciii_spo2alarms = pd.read_pickle('./spo2_alarms_df_v4.20.pkl')
     x = mimiciii_spo2alarms.iloc[0]
-    x = retrieve_spo2_waveform(x)
+    x = retrieve_rr_waveform(x)
 
     # Compute matrix profile
-    x.spo2_mp, outlier_percent = compute_mp(x.spo2, window=w, threshold=t)
+    x.resp_mp, outlier_percent = compute_mp(x.resp, window=w, threshold=t)
     s = time.time()
     print('elapsed time: ' + str(time.time() - s) + 's')
-    print("window = " + str(w) + " threshold = " + str(t) + " len = " + str(len(x.spo2)) + " %outlier = " + str(
+    print("window = " + str(w) + " threshold = " + str(t) + " len = " + str(len(x.resp)) + " %outlier = " + str(
         outlier_percent))
 
     # Plot the signal data
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(20, 10))
-    ax1.plot(np.arange(len(x.spo2)), x.spo2, label="SpO2 Data")
+    ax1.plot(np.arange(len(x.resp)), x.resp, label="SpO2 Data")
     ax1.set_ylabel('Signal', size=22)
 
     # Plot the Matrix Profile
-    ax2.plot(range(100))
-    ax2.plot(np.arange(len(x.spo2_mp)), [t] * len(x.spo2_mp), color='black')
-    ax2.plot(np.arange(len(x.spo2_mp)), x.spo2_mp, label="Matrix Profile", color='red')
+    ax2.plot(range(15))
+    ax2.plot(np.arange(len(x.resp_mp)), [t] * len(x.resp_mp), color='black')
+    ax2.plot(np.arange(len(x.resp_mp)), x.resp_mp, label="Matrix Profile", color='red')
     ax2.set_ylabel('Matrix Profile', size=22)
 
     plt.show()
