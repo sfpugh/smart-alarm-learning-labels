@@ -356,11 +356,91 @@ def compute_mp(ts, window, threshold):
 
 
 @labeling_function()
+def lf_outlier_spo2_120(x):
+    v_df = vitals_dfs[x.pt_id]
+    spo2_mp, _ = compute_mp(v_df['SPO2-%'].to_numpy(), window=120, threshold=8.4)
+    center = v_df.index.get_loc(x.alarm_datetime, method='nearest')
+    return SUPPRESSIBLE if np.any(interval_centered_at(spo2_mp, length=120, center=center) > 8.4) else ABSTAIN
+
+
+@labeling_function()
 def lf_outlier_spo2_110(x):
     v_df = vitals_dfs[x.pt_id]
     spo2_mp, _ = compute_mp(v_df['SPO2-%'].to_numpy(), window=110, threshold=7.8)
     center = v_df.index.get_loc(x.alarm_datetime, method='nearest')
     return SUPPRESSIBLE if np.any(interval_centered_at(spo2_mp, length=110, center=center) > 7.8) else ABSTAIN
+
+
+@labeling_function()
+def lf_outlier_spo2_100(x):
+    v_df = vitals_dfs[x.pt_id]
+    spo2_mp, _ = compute_mp(v_df['SPO2-%'].to_numpy(), window=100, threshold=7.2)
+    center = v_df.index.get_loc(x.alarm_datetime, method='nearest')
+    return SUPPRESSIBLE if np.any(interval_centered_at(spo2_mp, length=100, center=center) > 7.2) else ABSTAIN
+
+
+@labeling_function()
+def lf_outlier_spo2_90(x):
+    v_df = vitals_dfs[x.pt_id]
+    spo2_mp, _ = compute_mp(v_df['SPO2-%'].to_numpy(), window=90, threshold=6.6)
+    center = v_df.index.get_loc(x.alarm_datetime, method='nearest')
+    return SUPPRESSIBLE if np.any(interval_centered_at(spo2_mp, length=90, center=center) > 6.6) else ABSTAIN
+
+
+@labeling_function()
+def lf_outlier_spo2_80(x):
+    v_df = vitals_dfs[x.pt_id]
+    spo2_mp, _ = compute_mp(v_df['SPO2-%'].to_numpy(), window=80, threshold=6)
+    center = v_df.index.get_loc(x.alarm_datetime, method='nearest')
+    return SUPPRESSIBLE if np.any(interval_centered_at(spo2_mp, length=80, center=center) > 6) else ABSTAIN
+
+
+@labeling_function()
+def lf_outlier_spo2_70(x):
+    v_df = vitals_dfs[x.pt_id]
+    spo2_mp, _ = compute_mp(v_df['SPO2-%'].to_numpy(), window=70, threshold=5.3)
+    center = v_df.index.get_loc(x.alarm_datetime, method='nearest')
+    return SUPPRESSIBLE if np.any(interval_centered_at(spo2_mp, length=70, center=center) > 5.3) else ABSTAIN
+
+
+@labeling_function()
+def lf_outlier_spo2_60(x):
+    v_df = vitals_dfs[x.pt_id]
+    spo2_mp, _ = compute_mp(v_df['SPO2-%'].to_numpy(), window=60, threshold=4.6)
+    center = v_df.index.get_loc(x.alarm_datetime, method='nearest')
+    return SUPPRESSIBLE if np.any(interval_centered_at(spo2_mp, length=60, center=center) > 4.6) else ABSTAIN
+
+
+@labeling_function()
+def lf_outlier_spo2_50(x):
+    v_df = vitals_dfs[x.pt_id]
+    spo2_mp, _ = compute_mp(v_df['SPO2-%'].to_numpy(), window=50, threshold=3.8)
+    center = v_df.index.get_loc(x.alarm_datetime, method='nearest')
+    return SUPPRESSIBLE if np.any(interval_centered_at(spo2_mp, length=50, center=center) > 3.8) else ABSTAIN
+
+
+@labeling_function()
+def lf_outlier_spo2_40(x):
+    v_df = vitals_dfs[x.pt_id]
+    spo2_mp, _ = compute_mp(v_df['SPO2-%'].to_numpy(), window=40, threshold=2.9)
+    center = v_df.index.get_loc(x.alarm_datetime, method='nearest')
+    return SUPPRESSIBLE if np.any(interval_centered_at(spo2_mp, length=40, center=center) > 2.9) else ABSTAIN
+
+
+@labeling_function()
+def lf_outlier_spo2_30(x):
+    v_df = vitals_dfs[x.pt_id]
+    spo2_mp, _ = compute_mp(v_df['SPO2-%'].to_numpy(), window=30, threshold=2.1)
+    center = v_df.index.get_loc(x.alarm_datetime, method='nearest')
+    return SUPPRESSIBLE if np.any(interval_centered_at(spo2_mp, length=30, center=center) > 2.1) else ABSTAIN
+
+
+@labeling_function()
+def lf_outlier_spo2_20(x):
+    v_df = vitals_dfs[x.pt_id]
+    spo2_mp, _ = compute_mp(v_df['SPO2-%'].to_numpy(), window=20, threshold=1.0)
+    center = v_df.index.get_loc(x.alarm_datetime, method='nearest')
+    return SUPPRESSIBLE if np.any(interval_centered_at(spo2_mp, length=20, center=center) > 1.0) else ABSTAIN
 
 
 def pred_threshold(p, thres):
@@ -385,14 +465,16 @@ def pred_threshold(p, thres):
 
 def main():
     ## Apply LFs to all alarms
-    lfs = [lf_short_alarm_15s, lf_short_alarm_10s, lf_short_alarm_5s,
-            lf_long_alarm_60s, lf_long_alarm_65s, lf_long_alarm_70s,
-            lf_hr_tech_err_20, lf_hr_tech_err_30,
-            lf_spo2_below85_over120s, lf_spo2_below80_over100s, lf_spo2_below70_over90s, lf_spo2_below60_over60s, lf_spo2_below50_over30s,
-            lf_hr_below50_over120s, lf_hr_below40_over60s, lf_hr_below30,
-            lf_rr_below50_over120s, lf_rr_below40_over60s, lf_rr_below30,
-            lf_repeat_alarms_15s, lf_repeat_alarms_30s, lf_repeat_alarms_60s,
-            lf_outlier_spo2_110]
+    lfs = [
+            #lf_short_alarm_15s, lf_short_alarm_10s, lf_short_alarm_5s,
+            #lf_long_alarm_60s, lf_long_alarm_65s, lf_long_alarm_70s,
+            #lf_hr_tech_err_20, lf_hr_tech_err_30,
+            #lf_spo2_below85_over120s, lf_spo2_below80_over100s, lf_spo2_below70_over90s, lf_spo2_below60_over60s, lf_spo2_below50_over30s,
+            #lf_hr_below50_over120s, lf_hr_below40_over60s, lf_hr_below30,
+            #lf_rr_below50_over120s, lf_rr_below40_over60s, lf_rr_below30,
+            #lf_repeat_alarms_15s, lf_repeat_alarms_30s, lf_repeat_alarms_60s,
+            lf_outlier_spo2_120, lf_outlier_spo2_110, lf_outlier_spo2_100, lf_outlier_spo2_90, lf_outlier_spo2_80, lf_outlier_spo2_70, lf_outlier_spo2_60, lf_outlier_spo2_50, lf_outlier_spo2_40, lf_outlier_spo2_30, lf_outlier_spo2_20
+        ]
 
     print('Applying LFs...\n')
     applier = PandasParallelLFApplier(lfs)
