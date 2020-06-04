@@ -20,8 +20,8 @@ alarms_df = read_alarms()
 vitals_dfs = read_vitals()
 age_factors_df = pd.DataFrame({'pt_age_group':[1,2,3,4], 
                                     'pt_age_group_L':['< 1 month','1-< 2 month','2-< 6 month','6 months and older'], 
-                                    'hr_age_factor':[1,1,1,1], 
-                                    'rr_age_factor':[1,1,1,1]}, 
+                                    'hr_age_factor':[3.833, 3.766, 3.733, 3.533], 
+                                    'rr_age_factor':[0.933, 0.9, 0.866, 0.8]}, 
                                     index=[1,2,3,4]) 
 
 
@@ -54,9 +54,10 @@ def lf_short_alarm_5s(x):
 
 def max_recovery(data):
     r = []
-    idxs = spo2.index
-    print(idxs)
-    print(idxs[1])
+
+    for i,_ in enumerate(data):
+        for j in range(i+1, len(data)):
+            r.append(data[j] - data[i])
 
     return max(r)
 
@@ -68,7 +69,7 @@ def lf_immediate_recovery_10s(x):
     10 seconds of alarm start then the alarm is suppressible, otherwise abstain
     """
     v_df = vitals_dfs[x.pt_id]
-    spo2_subrange = v_df.loc[x.alarm_datetime:x.alarm_datetime+timedelta(seconds=10), ['SPO2-%']]
+    spo2_subrange = v_df.loc[x.alarm_datetime:x.alarm_datetime+timedelta(seconds=10), ['SPO2-%']].to_numpy().flatten()
     return SUPPRESSIBLE if max_recovery(spo2_subrange) > 20 else ABSTAIN
 
 
@@ -79,7 +80,7 @@ def lf_immediate_recovery_15s(x):
     15 seconds of alarm start then the alarm is suppressible, otherwise abstain
     """
     v_df = vitals_dfs[x.pt_id]
-    spo2_subrange = v_df.loc[x.alarm_datetime:x.alarm_datetime+timedelta(seconds=15), ['SPO2-%']]
+    spo2_subrange = v_df.loc[x.alarm_datetime:x.alarm_datetime+timedelta(seconds=15), ['SPO2-%']].to_numpy().flatten()
     return SUPPRESSIBLE if max_recovery(spo2_subrange) > 30 else ABSTAIN
 
 
@@ -309,6 +310,18 @@ def lf_repeat_alarms_60s(x):
     return repeat_alarms(x, 60) 
 
 
+# compute moving std
+def compute_std(ts, window):
+    ts_std = []
+    for i in range(len(ts) - window):
+        ts_std.append(np.std(ts[i: i+window-1]))
+    ts_std = np.array(ts_std)
+    ts_std_head = np.zeros(window // 2 - 1)
+    ts_std_tail = np.zeros(len(ts) - len(ts_std) - window // 2 + 1)
+    ts_std = np.concatenate([ts_std_head, ts_std, ts_std_tail])
+    return ts_std
+
+
 # retrieve interval centered at some time stamp
 def interval_centered_at(x, length, center):
     start = max(0, center - length//2)
@@ -345,8 +358,9 @@ def compute_mp(ts, window, threshold):
 @labeling_function()
 def lf_outlier_spo2_110(x):
     v_df = vitals_dfs[x.pt_id]
-    spo2_mp, _ = compute_mp(v_df['SPO2-%'], window=110, threshold=7.8)
-    return SUPPRESSIBLE if np.any(interval_centered_at(spo2_mp, length=110, center=x.alarm_datetime) > 7.8) else ABSTAIN
+    spo2_mp, _ = compute_mp(v_df['SPO2-%'].to_numpy(), window=110, threshold=7.8)
+    center = v_df.index.get_loc(x.alarm_datetime, method='nearest')
+    return SUPPRESSIBLE if np.any(interval_centered_at(spo2_mp, length=110, center=center) > 7.8) else ABSTAIN
 
 
 def pred_threshold(p, thres):
@@ -377,7 +391,8 @@ def main():
             lf_spo2_below85_over120s, lf_spo2_below80_over100s, lf_spo2_below70_over90s, lf_spo2_below60_over60s, lf_spo2_below50_over30s,
             lf_hr_below50_over120s, lf_hr_below40_over60s, lf_hr_below30,
             lf_rr_below50_over120s, lf_rr_below40_over60s, lf_rr_below30,
-            lf_repeat_alarms_15s, lf_repeat_alarms_30s, lf_repeat_alarms_60s]
+            lf_repeat_alarms_15s, lf_repeat_alarms_30s, lf_repeat_alarms_60s,
+            lf_outlier_spo2_110]
 
     print('Applying LFs...\n')
     applier = PandasParallelLFApplier(lfs)
@@ -410,11 +425,15 @@ def test_lf():
     x = alarms_df.iloc[194]
     print(x)
 
-    lf_outlier_spo2_110(x)
+    v_df = vitals_dfs[x.pt_id]
+    print(v_df)
+
+    print(lf_immediate_recovery_10s(x))
+    #print(lf_outlier_spo2_110(x))
     
     exit(0)
 
 
 if __name__ == '__main__':
-    #main()
-    test_lf()
+    main()
+    #test_lf()
