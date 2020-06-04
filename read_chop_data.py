@@ -18,7 +18,6 @@ def read_alarms(save=False):
     """
     Reads alarms from zipped CSV and returns dataframe containing all spo2 low alarms
     """
-
     print('Processing alarms files...')
 
     zf = zipfile.ZipFile(DATA_DIR + '/' + ALARMS_ZIP)
@@ -51,7 +50,6 @@ def read_vitals(verbose=True, save=False):
     """
     Reads vitals from zipped CSVs and returns dictionary of vitals dataframes for each patient id
     """
-
     dfs = {}
 
     with zipfile.ZipFile(DATA_DIR + '/' + VITALS_ZIP) as zf:
@@ -101,6 +99,11 @@ def read_vitals(verbose=True, save=False):
 
             df = df.set_index('datetime', drop=True)
 
+            # convert columns to numeric datatypes
+            numeric_cols = [x for x in df.columns if x != 'timestamp']
+            for col in numeric_cols:
+                df[col] = pd.to_numeric(df[col])
+
             # add dataframe to dictionary
             dfs[int(vitals_file.split()[0])] = df
 
@@ -109,3 +112,4 @@ def read_vitals(verbose=True, save=False):
 
     return dfs
 # end read_vitals
+
