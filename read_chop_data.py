@@ -50,12 +50,16 @@ def read_vitals(verbose=True, save=False):
     """
     Reads vitals from zipped CSVs and returns dictionary of vitals dataframes for each patient id
     """
-    dfs = {}
+    vitals_df = pd.DataFrame()
+    #vitals_df = {}
 
     with zipfile.ZipFile(DATA_DIR + '/' + VITALS_ZIP) as zf:
         for vitals_file in zf.namelist():
-            if int(vitals_file.split()[0]) in [580, 610]:
-                print('Skipping ' + vitals_file + '...')
+            pt_id = int(vitals_file.split()[0])
+
+            if pt_id in [580, 610]:
+                if verbose:
+                    print('Skipping ' + vitals_file + '...')
                 continue
 
             if verbose:
@@ -97,19 +101,23 @@ def read_vitals(verbose=True, save=False):
                     print(row['timestamp'])
                 df.at[i,'datetime'] = datetime.datetime.combine(base_date, row['timestamp'])
 
-            df = df.set_index('datetime', drop=True)
+            # set multi-index
+            df['pt_id'] = [pt_id] * df.shape[0] 
+            df = df.set_index(['pt_id','datetime'], drop=True)
 
             # convert columns to numeric datatypes
             numeric_cols = [x for x in df.columns if x != 'timestamp']
             for col in numeric_cols:
                 df[col] = pd.to_numeric(df[col])
 
+            # append pt dataframe to larger dataframe
+            vitals_df = vitals_df.append(df)
+
             # add dataframe to dictionary
-            dfs[int(vitals_file.split()[0])] = df
+            #vitals_df[pt_id] = df
 
-            if save:
-                df.to_pickle(vitals_file.split('.')[0] + '.pkl')
+    if save:
+        vitals_df.to_pickle('chop_all_vitals_df.pkl')
 
-    return dfs
+    return vitals_df
 # end read_vitals
-
