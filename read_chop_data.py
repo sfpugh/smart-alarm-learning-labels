@@ -14,6 +14,7 @@ TECHNICAL_ERR = 2
 NOT_SUPPRESSIBLE = 0
 SUPPRESSIBLE = 1
 
+
 def read_alarms(save=False):
     """
     Reads alarms from zipped CSV and returns dataframe containing all spo2 low alarms
@@ -50,23 +51,25 @@ def read_vitals(verbose=True, save=False):
     """
     Reads vitals from zipped CSVs and returns dictionary of vitals dataframes for each patient id
     """
-    vitals_df = pd.DataFrame()
-    #vitals_df = {}
+    #vitals_df = pd.DataFrame()
+    vitals_df = {}
 
     with zipfile.ZipFile(DATA_DIR + '/' + VITALS_ZIP) as zf:
         for vitals_file in zf.namelist():
             pt_id = int(vitals_file.split()[0])
 
-            if pt_id in [580, 610]:
-                if verbose:
-                    print('Skipping ' + vitals_file + '...')
+            if pt_id == 580:
+                print('Skipping ' + vitals_file + '...(ill-formatted)')
                 continue
 
             if verbose:
                 print('Processing ' + vitals_file + '...')
             
             # read excel file into dataframe
-            df_original = pd.read_excel( zf.read(vitals_file) )
+            if pt_id != 610:
+                df_original = pd.read_excel( zf.read(vitals_file) )
+            else:
+                df_original = pd.read_excel( zf.read(vitals_file), skiprows=range(1,9) )
 
             # concatenate data so that have row per vital sign
             start = 0
@@ -89,9 +92,6 @@ def read_vitals(verbose=True, save=False):
             df.columns = df.iloc[0].values
             df = df.drop([0]).dropna(subset=['timestamp']).reset_index(drop=True)
 
-            if int(vitals_file.split()[0]) == 610:
-                print(df)
-
             df['datetime'] = np.nan
             base_date = datetime.date(1960,1,1) 
             for i, row in df.iterrows():
@@ -101,23 +101,22 @@ def read_vitals(verbose=True, save=False):
                     print(row['timestamp'])
                 df.at[i,'datetime'] = datetime.datetime.combine(base_date, row['timestamp'])
 
-            # set multi-index
-            df['pt_id'] = [pt_id] * df.shape[0] 
-            df = df.set_index(['pt_id','datetime'], drop=True)
-
             # convert columns to numeric datatypes
-            numeric_cols = [x for x in df.columns if x != 'timestamp']
+            numeric_cols = [x for x in df.columns if not x in ['datetime','timestamp']]
             for col in numeric_cols:
                 df[col] = pd.to_numeric(df[col])
 
             # append pt dataframe to larger dataframe
-            vitals_df = vitals_df.append(df)
-
+            #df['pt_id'] = [pt_id] * df.shape[0] 
+            #df = df.set_index(['pt_id','datetime'], drop=True)     # multiindex
+            #vitals_df = vitals_df.append(df)
+            
             # add dataframe to dictionary
-            #vitals_df[pt_id] = df
+            df = df.set_index('datetime', drop=True)
+            vitals_df[pt_id] = df
 
-    if save:
-        vitals_df.to_pickle('chop_all_vitals_df.pkl')
+            if save:
+                df.to_pickle('pt' + str(pt_id) + '_vitals_df.pkl')
 
     return vitals_df
 # end read_vitals
