@@ -6,4 +6,4 @@ Snorkel: https://www.snorkel.org
 
 ADTK: https://arundo-adtk.readthedocs-hosted.com/en/stable/
 
-Matrix profile (anaomoly detector): https://matrixprofile.org/
+Matrix profile (anaomoly detector): https://github.com/target/matrixprofile-ts
