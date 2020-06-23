@@ -95,7 +95,7 @@ def lf_hr_tech_err_20(x):
     """
     v_df = vitals_dfs[x.pt_id]
     t = v_df.index.get_loc(x.alarm_datetime, method='bfill')  # or use 'nearest' to get closest timestamp in general
-    return SUPPRESSIBlE if abs(v_df.at[t,'SPO2-R'] - v_df.at[t,'HR']) > 20 else ABSTAIN
+    return SUPPRESSIBLE if abs(v_df.at[t,'SPO2-R'] - v_df.at[t,'HR']) > 20 else ABSTAIN
 
 
 @labeling_function()
@@ -106,7 +106,7 @@ def lf_hr_tech_err_30(x):
     """
     v_df = vitals_dfs[x.pt_id]
     t = v_df.index.get_loc(x.alarm_datetime, method='bfill')  # or use 'nearest' to get closest timestamp in general
-    return SUPPRESSIBlE if abs(v_df.at[t,'SPO2-R'] - v_df.at[t,'HR']) > 30 else ABSTAIN
+    return SUPPRESSIBLE if abs(v_df.at[t,'SPO2-R'] - v_df.at[t,'HR']) > 30 else ABSTAIN
 
 
 @labeling_function()
