@@ -3,6 +3,9 @@ import numpy as np
 import zipfile
 import datetime
 
+#pd.set_option('display.max_columns', None)
+#pd.set_option('display.max_rows', None)
+
 DATA_DIR = './chop-alarm-data'
 ALARMS_ZIP = 'zippedalarmfilesforPRECISE.zip'
 VITALS_ZIP = 'zippedvitalsignfilesforPRECISE.zip'
@@ -41,7 +44,7 @@ def read_alarms(save=False):
     df['true_label_L'] = df['true_label'].apply(lambda x : 'Suppressible' if x == SUPPRESSIBLE else 'Not Suppressible')
 
     if save:
-        df.to_pickle('spo2alarms_df.pkl')
+        df.to_pickle('chop_spo2alarms_df.pkl')
 
     return df
 # end read_alarms
@@ -51,8 +54,7 @@ def read_vitals(verbose=True, save=False):
     """
     Reads vitals from zipped CSVs and returns dictionary of vitals dataframes for each patient id
     """
-    #vitals_df = pd.DataFrame()
-    vitals_df = {}
+    vitals_df = pd.DataFrame()
 
     with zipfile.ZipFile(DATA_DIR + '/' + VITALS_ZIP) as zf:
         for vitals_file in zf.namelist():
@@ -97,8 +99,6 @@ def read_vitals(verbose=True, save=False):
             for i, row in df.iterrows():
                 if i-1 > 0 and df.at[i-1,'timestamp'] > row['timestamp']:
                     base_date = base_date + datetime.timedelta(days=1)
-                if isinstance(row['timestamp'], str):
-                    print(row['timestamp'])
                 df.at[i,'datetime'] = datetime.datetime.combine(base_date, row['timestamp'])
 
             # convert columns to numeric datatypes
@@ -107,16 +107,12 @@ def read_vitals(verbose=True, save=False):
                 df[col] = pd.to_numeric(df[col])
 
             # append pt dataframe to larger dataframe
-            #df['pt_id'] = [pt_id] * df.shape[0] 
-            #df = df.set_index(['pt_id','datetime'], drop=True)     # multiindex
-            #vitals_df = vitals_df.append(df)
+            df['pt_id'] = [pt_id] * df.shape[0] 
+            df = df.set_index(['pt_id','datetime'], drop=True)     # multiindex
+            vitals_df = vitals_df.append(df)
             
-            # add dataframe to dictionary
-            df = df.set_index('datetime', drop=True)
-            vitals_df[pt_id] = df
-
-            if save:
-                df.to_pickle('pt' + str(pt_id) + '_vitals_df.pkl')
+    if save:
+        vitals_df.to_pickle('chop_vitals_df.pkl')
 
     return vitals_df
 # end read_vitals
