@@ -116,3 +116,7 @@ def read_vitals(verbose=True, save=False):
 
     return vitals_df
 # end read_vitals
+
+
+#read_alarms(save=True)
+#read_vitals(verbose=True, save=True)
