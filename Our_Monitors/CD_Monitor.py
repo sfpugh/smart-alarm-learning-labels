@@ -120,10 +120,10 @@ def CDM(L_dev, Y_dev, k = 2, sig = 0.01, verbose = False):
 				if verbose:
 					print("table: {0:<15} chi-sq {1:<15} p-value: {2:<15}".format(count, np.around(chi2_sum,4), np.around(p_val_tot,6)))
 			CT_list_2.append(CT_reshaped_2.astype(int))
-		print("\nDependecy Graph Edges: ", CD_edges)
+		#print("\nDependecy Graph Edges: ", CD_edges)
 		CD_nodes_sorted_by_no_of_edges = np.array(Counter(CD_nodes).most_common())
-		print("\nLFs in descending order of no of edges", CD_nodes_sorted_by_no_of_edges[:,0])
-		print("No of edges of LFs in above list\n", CD_nodes_sorted_by_no_of_edges[:,1])
+		#print("\nLFs in descending order of no of edges", CD_nodes_sorted_by_no_of_edges[:,0])
+		#print("No of edges of LFs in above list\n", CD_nodes_sorted_by_no_of_edges[:,1])
 		if n_bad!=0 and delta == 0 and verbose:
 			print(bcolors.OKBLUE+"\nNote"+bcolors.ENDC+": Either tune delta (currently "+str(delta)+") or increase datapoints in dev set to resolve"+bcolors.WARNING+" Errors"+bcolors.ENDC)
 		
