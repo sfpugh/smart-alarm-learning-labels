@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 from scipy.stats import chi2_contingency, chi2
 from ipywidgets import interact, fixed, IntSlider, FloatSlider
+from collections import Counter
 
 # imports for Informed_LabelModel class
 from snorkel.labeling.model import LabelModel
@@ -16,7 +17,7 @@ from scipy.sparse import issparse
 ##########################################
 # Conditional Dependence Monitor Main Code
 ##########################################
-def CDM(L_dev, Y_dev, k = 2, sig = 0.01, verbose = False):
+def CDM(L_dev, Y_dev, k = 2, sig = 0.01, verbose = False, return_more_info = False):
 	# create pd dataframe
 	Complete_dev = np.concatenate((np.array([Y_dev]).T, L_dev), axis=1)
 	df = pd.DataFrame(data=Complete_dev, columns=["GT"] + ["LF_"+str(i) for i in range(L_dev.shape[1])])
@@ -55,8 +56,7 @@ def CDM(L_dev, Y_dev, k = 2, sig = 0.01, verbose = False):
 		"""peform 3-way table chi-square independence test and obtain test statistic chi_square 
 		(or corresponding p-value) for each CT table where each CT-table is a ({k+1}^{no of other LFs})x(k+1)x(k+1) matrix
 		https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.chi2_contingency.html"""
-		p_val_list = []
-		LFs_that_have_deps = []
+		CD_edges = []; CD_nodes = []; CD_edges_p_vals = []; p_vals_sum_dict = {}
 		count = 0; n_bad = 0; CT_list_2 = []
 		for CT in CT_list:
 			count+=1; Z = k # there are (k) GT values
@@ -100,11 +100,10 @@ def CDM(L_dev, Y_dev, k = 2, sig = 0.01, verbose = False):
 				chi2_sum += chi2stat
 			p_val_tot = 1-chi2.cdf(chi2_sum, Z*(k-1)*(k-1))
 			
-			p_val_list.append(p_val_tot)
 			# checking if total p_value is lesser than chosen sig
 			if p_val_tot < sig: 
-				if verbose:
-					print("table: {0:<15} chi-sq {1:<15} p-value: {2:<15} ==> ~({3} __|__ {4} | LF_all others)".format(count, np.around(chi2_sum,4), np.around(p_val_tot,6), str(CT.index.names[1]), str(CT.columns.name)))
+				#if verbose:
+				#	print("table: {0:<15} chi-sq {1:<15} p-value: {2:<15} ==> ~({3} __|__ {4} | LF_all others)".format(count, np.around(chi2_sum,4), np.around(p_val_tot,6), str(CT.index.names[1]), str(CT.columns.name)))
 				if len(CT.index.names[1])==5:
 					digits_LF1 = CT.index.names[1][-2:]
 				else:
@@ -113,24 +112,45 @@ def CDM(L_dev, Y_dev, k = 2, sig = 0.01, verbose = False):
 					digits_LF2 = CT.columns.name[-2:]
 				else:
 					digits_LF2 = CT.columns.name[-1:]
-				LFs_that_have_deps.append( (int(digits_LF1), int(digits_LF2)) )
-			else:
-				if verbose:
-					print("table: {0:<15} chi-sq {1:<15} p-value: {2:<15}".format(count, np.around(chi2_sum,4), np.around(p_val_tot,6)))
+				CD_edges.append( (int(digits_LF1), int(digits_LF2)) )
+				CD_edges_p_vals.append(p_val_tot)
+				CD_nodes.extend( [int(digits_LF1), int(digits_LF2)] )
+				for key in [int(digits_LF1), int(digits_LF2)]:
+					if key in p_vals_sum_dict:
+						p_vals_sum_dict[key] += p_val_tot
+					else:
+						p_vals_sum_dict[key] = p_val_tot
+			#else:
+			#	if verbose:
+			#		print("table: {0:<15} chi-sq {1:<15} p-value: {2:<15}".format(count, np.around(chi2_sum,4), np.around(p_val_tot,6)))
 			CT_list_2.append(CT_reshaped_2.astype(int))
-		print("\nDependecy Graph Edges: ", LFs_that_have_deps)
-		
+		#print("\nDependecy Graph Edges: ", CD_edges)
+		CD_nodes_sorted_by_no_of_edges = np.array(Counter(CD_nodes).most_common())[:,0]
+		Corr_no_of_edges = np.array(Counter(CD_nodes).most_common())[:,1]
+		Sum_of_p_vals_of_connected_edges = [p_vals_sum_dict[key] for key in CD_nodes_sorted_by_no_of_edges]
+		edges_info_dict = {}; nodes_info_dict = {}
+		edges_info_dict['CD_edges'] = CD_edges; edges_info_dict['CD_edges_p_vals'] = CD_edges_p_vals
+		nodes_info_dict['CD_nodes_sorted_by_no_of_edges'] = CD_nodes_sorted_by_no_of_edges; nodes_info_dict['Corr_no_of_edges'] = Corr_no_of_edges; nodes_info_dict['Sum_of_p_vals_of_connected_edges'] = Sum_of_p_vals_of_connected_edges
+		if verbose:
+			#print("\nLFs in descending order of no of edges", CD_nodes_sorted_by_no_of_edges)
+			#print("No of edges of LFs in above list\n", Corresponding_no_of_edges)
+			edges_df = pd.DataFrame(edges_info_dict); nodes_df = pd.DataFrame(nodes_info_dict)
+			print(edges_df)
+			if return_more_info: print(nodes_df)
 		if n_bad!=0 and delta == 0 and verbose:
 			print(bcolors.OKBLUE+"\nNote"+bcolors.ENDC+": Either tune delta (currently "+str(delta)+") or increase datapoints in dev set to resolve"+bcolors.WARNING+" Errors"+bcolors.ENDC)
 		
-		return LFs_that_have_deps, CT_list_2
+		return edges_info_dict, nodes_info_dict, CT_list_2
 
 	# retrieve modified CTs & tuples of LFs that are conditionally independent
-	LFs_that_have_deps, CT_list_2 = get_p_vals_tables(CT_list, sig = sig, k = k, delta = 1)
+	edges_info_dict, nodes_info_dict, CT_list_2 = get_p_vals_tables(CT_list, sig = sig, k = k, delta = 1)
 	#if verbose:
 	#	print("The reduced and modified contingency tables are given below. Scroll to view all")
 	#	interact(show_CT, q=IntSlider(min=1, max=len(CT_list), value=0, step=1), CT_list=fixed(CT_list_2));	
-	return LFs_that_have_deps
+	if return_more_info:
+		return edges_info_dict, nodes_info_dict
+	else:
+		return edges_info_dict['CD_edges']
 
 ###############################
 # Informed_LabelModel main code
@@ -231,7 +251,7 @@ class Informed_LabelModel(LabelModel):
 					raise ValueError(item)
 				members = list(C["members"])
 				nc = len(members)
-				
+
 				# If a unary maximal clique, just store its existing index
 				if nc == 1:
 					C["start_index"] = members[0] * self.cardinality
