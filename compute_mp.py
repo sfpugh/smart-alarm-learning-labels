@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from time import time
 from tqdm import tqdm
 from matrixprofile import matrixProfile
 
@@ -71,13 +72,14 @@ def compute_mp(ts, window, threshold=None):
     return mp
 
 
-def apply_compute_mp(df, vitals, verbose=True, save=False, filename=""):
+def apply_compute_mp(df, vitals, interval, verbose=True, save=False, filename=""):
     """
     Compute a matrix profile per patient with window sizes 20 to 120 seconds
     
     Args:
         df - dataframe containing vitals
         vitals - vital signs to compute matrix profile for
+        interval - sampling rate of vitals data
         verbose - True to print function time duration, otherwise False
         save - True to save dataframe with mp, otherwise False
         filename - Name of file to save dataframe to
@@ -92,7 +94,7 @@ def apply_compute_mp(df, vitals, verbose=True, save=False, filename=""):
     
     for vital in vitals:
         for w in range(20,121,10):
-            mps = df.groupby('pt_id')[vital].progress_apply(lambda x: compute_mp(x.to_numpy(), w//INTERVAL))
+            mps = df.groupby('pt_id')[vital].progress_apply(lambda x: compute_mp(x.to_numpy(), w//interval))
             mps = mps.reindex(df.index.get_level_values(0).drop_duplicates())
             new_df[vital + ' MP' + str(w)] = mps.explode().to_numpy()
 
