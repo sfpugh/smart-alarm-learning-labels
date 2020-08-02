@@ -24,7 +24,7 @@ Unzip the data to avoid having to re-build it from scratch.
 unzip data.zip
 ```
 
-Open Jupyter notebook and open the .ipynb file of interest. Be sure to select the virtual environment created in the installation steps above as the kernel for the notebook before proceeding to run the cells.
+Open Jupyter notebook and open the .ipynb file of interest. Once you open a notebook, activate the virtual environment created in the installation steps by navigating to the 'Kernel' tab in the toolbar, then hover on 'Change kernel', then select the proper environment. Now you can run all the cells in the notebook. 
 ```
 jupyter notebook
 ```
