@@ -19,6 +19,15 @@ deactivate
 ```
 
 ## Usage
+Unzip the data to avoid having to re-build it from scratch.
+```
+unzip data.zip
+```
+
+Open Jupyter notebook and open the .ipynb file of interest. Be sure to select the virtual environment created in the installation steps above as the kernel for the notebook before proceeding to run the cells.
+```
+jupyter notebook
+```
 
 ## Resources
 - Snorkel https://www.snorkel.org 
