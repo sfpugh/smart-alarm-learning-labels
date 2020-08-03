@@ -16,19 +16,21 @@ class bcolors:
 	ENDC = '\033[0m'
 
 # Conditional Dependence Monitor Main Code
-def CDGAM(L_dev, k = 2, sig = 0.01, policy = 'new', verbose = False, return_more_info = False):
+def NM(L_dev, Y_dev, k = 2, sig = 0.01, policy = 'new', verbose = False, return_more_info = False):
 	# create pd dataframe
-	df = pd.DataFrame(data=L_dev, columns=["LF_"+str(i) for i in range(L_dev.shape[1])])
+	Complete_dev = np.concatenate((np.array([Y_dev]).T, L_dev), axis=1)
+	df = pd.DataFrame(data=Complete_dev, columns=["GT"] + ["LF_"+str(i) for i in range(L_dev.shape[1])])
 	no_other_LFs = L_dev.shape[1]-2
+
 	def create_CT_tables(df, L_dev, k):
 		"""create all combinations of contingency table's of {LF_i, LF_j, [LF_all others]}"""
 		CT_list = []
 		for i in range(L_dev.shape[1]):
 			for j in [k for k in range(i, L_dev.shape[1]) if k!=i]:
 				other_LFs_list = [df['LF_'+str(m)] for m in range(L_dev.shape[1]) if (m!=i and m!=j)]
-				CT = pd.crosstab(other_LFs_list + [df['LF_'+str(i)]], df['LF_'+str(j)], margins = False) 
-				k_list = [i-1 for i in range(k+1)]
-				CT = CT.reindex(index=list(itertools.product(*[tuple(k_list)] * (no_other_LFs+1))), columns=k_list, fill_value=0)
+				CT = pd.crosstab([df['GT']] + other_LFs_list + [df['LF_'+str(i)]], df['LF_'+str(j)], margins = False) 
+				k_list = [i-1 for i in range(k+1)]; GT_indices = [i for i in range(k)]
+				CT = CT.reindex(index=list(itertools.product(GT_indices, *[tuple(k_list)] * (no_other_LFs+1))), columns=k_list, fill_value=0)
 				CT_list.append(CT)
 		return CT_list
 	
@@ -50,7 +52,7 @@ def CDGAM(L_dev, k = 2, sig = 0.01, policy = 'new', verbose = False, return_more
 		CD_edges = []; CD_nodes = []; CD_edges_p_vals = []; p_vals_sum_dict = {}; CT_reduced_list = []
 		count = 0; #n_bad = 0
 		for CT in CT_list:
-			count+=1; Z = (k+1)**no_other_LFs
+			count+=1; Z = k * (k+1)**no_other_LFs # k GT values, (k+1) LF values for (all-2) LFs
 			CT_reshaped = np.reshape(CT.values, (Z,k+1,k+1)) 
 
 			if policy == 'old':
@@ -60,12 +62,12 @@ def CDGAM(L_dev, k = 2, sig = 0.01, policy = 'new', verbose = False, return_more
 			CT_reduced_list.append(CT_reduced)
 			# checking if total p_value is lesser than chosen sig
 			if p_val_tot < sig: 
-				digits_LF1 = CT.index.names[no_other_LFs][3:]
+				digits_LF1 = CT.index.names[1+no_other_LFs][3:] # add 1 for the GT column
 				digits_LF2 = CT.columns.name[3:] # 3rd index onwards to remove LF_ (3 characters)
 				CD_edges.append( (int(digits_LF1), int(digits_LF2)) )
 				CD_edges_p_vals.append(p_val_tot)
 
-		#print info
+		#printing info
 		edges_info_dict = {}
 		edges_info_dict['CD_edges'] = CD_edges; edges_info_dict['CD_edges_p_vals'] = CD_edges_p_vals
 		if verbose:
@@ -96,6 +98,7 @@ def CDGAM(L_dev, k = 2, sig = 0.01, policy = 'new', verbose = False, return_more
 		return edges_info_dict
 	else:
 		return edges_info_dict['CD_edges']
+
 
 ##################################################################
 # Heuristic Policies to reduce Contingency Tables and get P values
