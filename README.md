@@ -24,9 +24,13 @@ Unzip the data to avoid having to re-build it from scratch.
 unzip data.zip
 ```
 
-Open Jupyter notebook and open the .ipynb file of interest. Once you open a notebook, activate the virtual environment created in the installation steps by navigating to the 'Kernel' tab in the toolbar, then hover on 'Change kernel', then select the proper environment. Now you can run all the cells in the notebook. 
+Jupyter notebook "learn_labels_MASTER.ipynb" is the notebook from which you should call all other experiments in "/Experiments". You can open the notebook with the following command.
 ```
-jupyter notebook
+jupyter notebook learn_labels_MASTER.ipynb
+```
+Then activate the virtual environment created in the installation steps by navigating to the 'Kernel' tab in the toolbar, then hover on 'Change kernel', then select the proper environment. Edit the last cell in the notebook to run the experiment of interest as follows, then run all cells.
+```
+%run ./Experiments/<E#-description>.ipynb
 ```
 
 ## Resources
