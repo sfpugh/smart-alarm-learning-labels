@@ -2,7 +2,7 @@
 import pandas as pd
 import numpy as np
 from scipy.stats import chi2_contingency, chi2
-from ipywidgets import interact, fixed, IntSlider, FloatSlider
+from ipywidgets import interact, fixed, IntSlider, FloatSlider, SelectionSlider, Dropdown
 from collections import Counter
 
 # imports for Informed_LabelModel class
@@ -14,10 +14,19 @@ import networkx as nx
 from itertools import chain, product
 from scipy.sparse import issparse
 
+class bcolors:
+	""" Custom class for storing colours of warnings, errors, etc """
+	HEADER = '\033[95m'
+	OKBLUE = '\033[94m'
+	OKGREEN = '\033[92m'
+	WARNING = '\033[93m'
+	FAIL = '\033[91m'
+	ENDC = '\033[0m'
+
 ##########################################
 # Conditional Dependence Monitor Main Code
 ##########################################
-def CDM(L_dev, Y_dev, k = 2, sig = 0.01, verbose = False, return_more_info = False):
+def CDM(L_dev, Y_dev, k = 2, sig = 0.01, policy = 'new', verbose = False, return_more_info = False):
 	# create pd dataframe
 	Complete_dev = np.concatenate((np.array([Y_dev]).T, L_dev), axis=1)
 	df = pd.DataFrame(data=Complete_dev, columns=["GT"] + ["LF_"+str(i) for i in range(L_dev.shape[1])])
@@ -36,121 +45,188 @@ def CDM(L_dev, Y_dev, k = 2, sig = 0.01, verbose = False, return_more_info = Fal
 		"""function to return qth CT at index q-1 of CT_list"""
 		return CT_list[q-1]
 
-	# create and show all CT's with slider applet
+	# create and show all CT's (if verbose) with slider applet
 	CT_list = create_CT_tables(df, L_dev, k) # create all combinations of Contingency Tables
 	if verbose:
 		print("No of tables = Choosing 2 from "+str(L_dev.shape[1])+" LFs = "+str(L_dev.shape[1])+"C2 = "+str(len(CT_list)))
-		print("Note: Showing subtables where CI is not clearly evident")
+		#print("Note: Showing subtables where CI is not clearly evident")
 		interact(show_CT, q=IntSlider(min=1, max=len(CT_list), value=0, step=1), CT_list=fixed(CT_list));
 
-	class bcolors:
-		""" Custom class for storing colours of warnings, errors, etc """
-		HEADER = '\033[95m'
-		OKBLUE = '\033[94m'
-		OKGREEN = '\033[92m'
-		WARNING = '\033[93m'
-		FAIL = '\033[91m'
-		ENDC = '\033[0m'
-
-	def get_p_vals_tables(CT_list, sig, k, delta = 0):
+	def get_conditional_dependencies(CT_list, sig, k, delta = 0):
 		"""peform 3-way table chi-square independence test and obtain test statistic chi_square 
 		(or corresponding p-value) for each CT table where each CT-table is a ({k+1}^{no of other LFs})x(k+1)x(k+1) matrix
 		https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.chi2_contingency.html"""
-		CD_edges = []; CD_nodes = []; CD_edges_p_vals = []; p_vals_sum_dict = {}
-		count = 0; n_bad = 0; CT_list_2 = []
+		CD_edges = []; CD_nodes = []; CD_edges_p_vals = []; p_vals_sum_dict = {}; CT_reduced_list = []
+		count = 0; #n_bad = 0
 		for CT in CT_list:
-			count+=1; Z = k # there are (k) GT values
-			CT_reshaped = np.reshape(CT.values, (Z,k+1,k+1)) 
-
-			# check for "both 0 row and column" in (k+1)x(k+1) matrices; reduce to from Zx(k+1)x(k+1) to Zx(k)x(k) matrix
-			zero_col_counter = np.zeros(k+1); zero_row_counter = np.zeros(k+1); 
-			CT_reshaped_2 = np.zeros((Z,k,k))
-			for i in range(Z): 
-				zero_col_counter += (CT_reshaped[i,:,:]==0).all(axis=0) # find bools representing 0 columns/vertical dirn (axis = 0); add bool result to counter
-				zero_row_counter += (CT_reshaped[i,:,:]==0).all(axis=1) # similarly for row
-			if (zero_col_counter==0).all() == False and (zero_row_counter==0).all() == False:
-				zero_col_index = np.where(zero_col_counter == Z)[0][0] # get index of *first* 0 col in all (k+1)x(k+1) matrices
-				zero_row_index = np.where(zero_row_counter == Z)[0][0] # similarly for row
-				for i in range(Z): 
-					temp = np.delete(CT_reshaped[i,:,:], zero_col_index, axis=1)
-					temp2 = np.delete(temp, zero_row_index, axis=0)
-					CT_reshaped_2[i,:,:] = temp2
-
-			# check for any zero columns / rows in both (k)x(k) matrices in CT; if yes, add delta to all values
-			bad_table = False
-			for i,j in [(i,j) for i in range(Z) for j in [0,1]]: 
-				if ~np.all(CT_reshaped_2[i,:,:].any(axis=j)):
-					bad_table = True
-					n_bad += 1
-			if bad_table:
-				if delta!=0:
-					# to prevent 0 row/col in exp_freq table which in turn prevents division by 0 in statistic
-					CT_reshaped_2 = CT_reshaped_2 + delta
-					if verbose:
-						print("Adding delta to table ", count)
-				else:
-					if verbose:
-						print(bcolors.WARNING + "Error : table ",count," has a zero column/row in one (or both) of its 2x2 matrices!" + bcolors.ENDC)
-					continue
+			count+=1; Z = k; # there are (k) GT values
+			CT_reshaped = np.reshape(CT.values, (Z,k+1,k+1))
 			
-			# calculate statistic for each (k)x(k) matrix and sum
-			chi2_sum = 0
-			for i in range(Z):
-				chi2stat, p, dof, exp_freq = chi2_contingency(CT_reshaped_2[i,:,:])
-				chi2_sum += chi2stat
-			p_val_tot = 1-chi2.cdf(chi2_sum, Z*(k-1)*(k-1))
-			
+			if policy == 'old':
+				p_val_tot, CT_reduced = get_p_total_old_policy(CT_reshaped, k, Z, delta, count, verbose, return_more_info) # Older policy of one round of 0 row/col reduction and then adding delta
+			else:
+				p_val_tot, CT_reduced = get_p_total_new_policy(CT_reshaped, k, Z, count, verbose, return_more_info) # newer policy of complete reduction
+			CT_reduced_list.append(CT_reduced)
 			# checking if total p_value is lesser than chosen sig
 			if p_val_tot < sig: 
-				#if verbose:
-				#	print("table: {0:<15} chi-sq {1:<15} p-value: {2:<15} ==> ~({3} __|__ {4} | LF_all others)".format(count, np.around(chi2_sum,4), np.around(p_val_tot,6), str(CT.index.names[1]), str(CT.columns.name)))
-				if len(CT.index.names[1])==5:
-					digits_LF1 = CT.index.names[1][-2:]
-				else:
-					digits_LF1 = CT.index.names[1][-1:]
-				if len(CT.columns.name)==5:
-					digits_LF2 = CT.columns.name[-2:]
-				else:
-					digits_LF2 = CT.columns.name[-1:]
+				digits_LF1 = CT.index.names[1][3:]
+				digits_LF2 = CT.columns.name[3:] # 3rd index onwards to remove LF_ (3 characters)
 				CD_edges.append( (int(digits_LF1), int(digits_LF2)) )
 				CD_edges_p_vals.append(p_val_tot)
-				CD_nodes.extend( [int(digits_LF1), int(digits_LF2)] )
-				for key in [int(digits_LF1), int(digits_LF2)]:
-					if key in p_vals_sum_dict:
-						p_vals_sum_dict[key] += p_val_tot
-					else:
-						p_vals_sum_dict[key] = p_val_tot
-			#else:
-			#	if verbose:
-			#		print("table: {0:<15} chi-sq {1:<15} p-value: {2:<15}".format(count, np.around(chi2_sum,4), np.around(p_val_tot,6)))
-			CT_list_2.append(CT_reshaped_2.astype(int))
-		#print("\nDependecy Graph Edges: ", CD_edges)
-		CD_nodes_sorted_by_no_of_edges = np.array(Counter(CD_nodes).most_common())[:,0]
-		Corr_no_of_edges = np.array(Counter(CD_nodes).most_common())[:,1]
-		Sum_of_p_vals_of_connected_edges = [p_vals_sum_dict[key] for key in CD_nodes_sorted_by_no_of_edges]
-		edges_info_dict = {}; nodes_info_dict = {}
+
+		#print info
+		edges_info_dict = {}
 		edges_info_dict['CD_edges'] = CD_edges; edges_info_dict['CD_edges_p_vals'] = CD_edges_p_vals
-		nodes_info_dict['CD_nodes_sorted_by_no_of_edges'] = CD_nodes_sorted_by_no_of_edges; nodes_info_dict['Corr_no_of_edges'] = Corr_no_of_edges; nodes_info_dict['Sum_of_p_vals_of_connected_edges'] = Sum_of_p_vals_of_connected_edges
 		if verbose:
-			#print("\nLFs in descending order of no of edges", CD_nodes_sorted_by_no_of_edges)
-			#print("No of edges of LFs in above list\n", Corresponding_no_of_edges)
-			edges_df = pd.DataFrame(edges_info_dict); nodes_df = pd.DataFrame(nodes_info_dict)
+			edges_df = pd.DataFrame(edges_info_dict)
 			print(edges_df)
-			if return_more_info: print(nodes_df)
-		if n_bad!=0 and delta == 0 and verbose:
-			print(bcolors.OKBLUE+"\nNote"+bcolors.ENDC+": Either tune delta (currently "+str(delta)+") or increase datapoints in dev set to resolve"+bcolors.WARNING+" Errors"+bcolors.ENDC)
-		
-		return edges_info_dict, nodes_info_dict, CT_list_2
+
+		return edges_info_dict, CT_reduced_list
 
 	# retrieve modified CTs & tuples of LFs that are conditionally independent
-	edges_info_dict, nodes_info_dict, CT_list_2 = get_p_vals_tables(CT_list, sig = sig, k = k, delta = 1)
-	#if verbose:
-	#	print("The reduced and modified contingency tables are given below. Scroll to view all")
-	#	interact(show_CT, q=IntSlider(min=1, max=len(CT_list), value=0, step=1), CT_list=fixed(CT_list_2));	
+	edges_info_dict, CT_reduced_list = get_conditional_dependencies(CT_list, sig = sig, k = k, delta = 1)
+
+	# display reduced contingency tables' submatrices whose all elements = delta is not true
+	if verbose:
+		non_delta_tuple_indices = []
+		for q in range(len(CT_reduced_list)):
+			for r in range(len(CT_reduced_list[0])):
+				delta = 1
+				if ~(CT_reduced_list[q][r]==delta).all():
+					non_delta_tuple_indices.append( ((q,r), (q,r)) ) # apending a tuple of tuples because first part of outer tuple is key and second is value passed gy slider to fn
+
+		def show_CT_sub_matrices(t, CT_reduced_list):
+			"""function to return qth CT at index q-1 of CT_list"""
+			return CT_reduced_list[t[0]][t[1]]
+		print("The reduced and modified contingency tables with non-delta values are given below")
+		interact(show_CT_sub_matrices, t=Dropdown(description='index tuples (table number, submatrix number)', options=non_delta_tuple_indices), CT_reduced_list=fixed(CT_reduced_list));
+	
 	if return_more_info:
-		return edges_info_dict, nodes_info_dict
+		return edges_info_dict
 	else:
 		return edges_info_dict['CD_edges']
+
+
+##################################################################
+# Heuristic Policies to reduce Contingency Tables and get P values
+##################################################################
+def get_p_total_old_policy(CT_reshaped, k, Z, delta, count, verbose, return_more_info):
+	# check for "both 0 row and column" in all Z submatrices of size (k+1)x(k+1); reduce from Zx(k+1)x(k+1) to Zx(k)x(k) matrix
+	zero_col_counter = np.zeros(k+1); zero_row_counter = np.zeros(k+1); 
+	reduced_matrix = False
+	# obtain count of no of 0 columns when (k+1)x(k+1) matrices are vstacked; ~ count of no of 0 rows when (k+1)x(k+1) matrices are hstacked
+	# For eg.,			[[[a,b,0], [0,0,0], [0,0,0]],	gives		(zero_col_counter, zero_row_counter) as below
+	#  2x3x3 matrix		 [[0,c,d], [0,0,0], [0,0,0]]]				[1,0,1], [0,2,2]
+	for i in range(Z): 
+		zero_col_counter += (CT_reshaped[i,:,:]==0).all(axis=0) # find bools representing 0 columns/vertical dirn (axis = 0); add bool result to counter
+		zero_row_counter += (CT_reshaped[i,:,:]==0).all(axis=1) # similarly for row
+	# checking if any elements of zero_col_counter and zero_row_counter are equal to Z (no of submatrices)
+	#if (zero_col_counter==0).all() == False and (zero_row_counter==0).all() == False:
+	if (zero_col_counter==Z).any() and (zero_row_counter==Z).any():
+		zero_col_indices = np.where(zero_col_counter == Z)[0] # get indices of cols that are 0 in all Z submatrices of size (k+1)x(k+1)
+		zero_row_indices = np.where(zero_row_counter == Z)[0] # similarly for row
+		if k == 2: # if submatrices are 3x3
+		#if min(len(zero_col_indices), len(zero_row_indices)) == 1: # if only 1 set of both 0 row & 0 col
+			CT_reshaped_2 = np.zeros((Z,k,k))
+			k_red = k
+			for i in range(Z): 									   # reshape
+				temp = np.delete(CT_reshaped[i,:,:], zero_col_indices[0], axis=1) # delete *first* 0 col in all Z submatrices of size (k+1)x(k+1)
+				temp2 = np.delete(temp, zero_row_indices[0], axis=0)
+				CT_reshaped_2[i,:,:] = temp2
+		if k == 3: # if submatrices are 4x4
+			if min(len(zero_col_indices), len(zero_row_indices)) == 1: # if only 1 set of both 0 row & 0 col
+				CT_reshaped_2 = np.zeros((Z,k,k))
+				k_red = k
+				for i in range(Z): 									   # reshape
+					temp = np.delete(CT_reshaped[i,:,:], zero_col_indices[0], axis=1) # delete *first* 0 col in all Z submatrices of size (k+1)x(k+1)
+					temp2 = np.delete(temp, zero_row_indices[0], axis=0)
+					CT_reshaped_2[i,:,:] = temp2
+			elif min(len(zero_col_indices), len(zero_row_indices)) == 2: # if 2 sets of both 0 row & 0 col
+				CT_reshaped_2 = np.zeros((Z,k-1,k-1))
+				k_red = k-1
+				for i in range(Z): 									   # reshape
+					temp = np.delete(CT_reshaped[i,:,:], zero_col_indices[0:2], axis=1) # delete *first two* 0 col in all Z submatrices of size (k+1)x(k+1)
+					temp2 = np.delete(temp, zero_row_indices[0:2], axis=0)
+					CT_reshaped_2[i,:,:] = temp2
+		reduced_matrix = True
+
+	if reduced_matrix:
+		CT_to_use = CT_reshaped_2
+		if verbose and return_more_info: print(CT_reshaped_2)
+	else:
+		CT_to_use = CT_reshaped
+		k_red = k+1
+
+	# check for any zero columns / rows in both (k)x(k) matrices in CT; if yes, add delta to all values
+	bad_table = False
+	for i,j in [(i,j) for i in range(Z) for j in [0,1]]: 
+		if ~np.all(CT_to_use[i,:,:].any(axis=j)):
+			bad_table = True
+			#n_bad += 1
+	if bad_table:
+		if delta!=0:
+			# to prevent 0 row/col in exp_freq table which in turn prevents division by 0 in statistic
+			CT_to_use = CT_to_use + delta
+			if verbose:
+				print("Adding delta to table ", count)
+		else:
+			if verbose:
+				print(bcolors.WARNING + "Error : table ",count," has a zero column/row in one (or both) of its 2x2 matrices!" + bcolors.ENDC)
+			return 1
+
+	# calculate statistic for each (k)x(k) matrix and sum
+	chi2_sum = 0
+	for i in range(Z):
+		chi2stat, p, dof, exp_freq = chi2_contingency(CT_to_use[i,:,:])
+		chi2_sum += chi2stat
+	p_val_tot = 1-chi2.cdf(chi2_sum, Z*(k_red-1)*(k_red-1))
+	return p_val_tot, CT_to_use
+
+def get_p_total_new_policy(M, k, Z, count, verbose, return_more_info):
+	def isSquare(m): 
+		return all(len(row) == len(m) for row in m)
+	def is0D(m):
+		return m.shape[0] == 0 or m.shape[1] == 0
+	def is1D(m):
+		return m.shape[0] == 1 or m.shape[1] == 1
+	def remove_all_0_rows_cols(m):
+		# remove all 0 columns
+		m2 = m[:, ~np.all(m == 0, axis=0)]
+		# remove all 0 rows
+		m3 = m2[~np.all(m2 == 0, axis=1)] 
+		return m3
+	#if verbose: print(count)
+	chi2_sum = 0
+	ct_considered = 0; no_1D = 0; no_0D = 0; M_reduced = []
+	for i in range(Z):
+		m_new = remove_all_0_rows_cols(M[i])
+		M_reduced.append(m_new)
+		#if verbose: print(m_new)
+		if is0D(m_new):
+			no_0D += 1
+			#if verbose: print("skipping 0d")
+			continue
+		elif is1D(m_new):
+			no_1D += 1 # assume all 1D reduced matrices are conditionally independent
+			#if verbose: print("skipping 1d")
+			continue
+		elif isSquare(m_new):
+			ct_considered += 1
+			k_red = len(m_new)
+			if ct_considered>1 and k_red!= k_red_prev: # check if this is not the first time elif is entered. Then check for consistent reduced matrix size
+					print("different sized reduced matrices (TODO)")
+					continue
+			chi2stat, p, dof, exp_freq = chi2_contingency(m_new)
+			chi2_sum += chi2stat
+			k_red_prev = k_red
+		elif ~isSquare(m_new) and ~is1D(m_new):
+			print("Not square and Not 1D matrices (TODO)")
+	if no_0D+no_1D != Z: # if all reduced matrices are not 1d
+		p_val_tot = 1-chi2.cdf(chi2_sum, ct_considered*(k_red-1)*(k_red-1))
+	else: 
+		p_val_tot = 1 # to be considered independent, set any value > alpha here
+	return p_val_tot, M_reduced
+
 
 ###############################
 # Informed_LabelModel main code
@@ -303,4 +379,3 @@ class Informed_LabelModel(LabelModel):
 				end_index = self.c_data_MeTaL[id]["end_index"], 
 				max_cliques = self.c_data_MeTaL[id]["max_cliques"])
 		return L_aug_from_metal
-
