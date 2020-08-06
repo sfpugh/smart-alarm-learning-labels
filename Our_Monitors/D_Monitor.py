@@ -27,7 +27,7 @@ def DM(L_dev, sig = 0.01, verbose = False):
 	if verbose:
 		print("No of tables = Choosing 2 from "+str(L_dev.shape[1])+" LFs = "+str(L_dev.shape[1])+"C2 = "+str(len(CT_list)))
 		print("Note: Showing subtables where CI is not clearly evident")
-	interact(show_CT, k=IntSlider(min=1, max=len(CT_list), value=0, step=1), CT_list=fixed(CT_list));
+		interact(show_CT, k=IntSlider(min=1, max=len(CT_list), value=0, step=1), CT_list=fixed(CT_list));
 
 	class bcolors:
 		""" Custom class for storing colours of warnings, errors, etc """
@@ -77,7 +77,7 @@ def DM(L_dev, sig = 0.01, verbose = False):
 			else:
 				if verbose:
 					print("table: {0:<15} chi-sq {1:<15} p-value: {2:<20}".format(count, np.around(chi2stat1,4), np.around(p1,6)))
-		print("\nSimple Dependecy Graph Edges: ", LFs_that_have_deps)
+		#print("\nSimple Dependecy Graph Edges: ", LFs_that_have_deps)
 		
 		if n_bad!=0 and delta == 0 and verbose:
 			print(bcolors.OKBLUE+"\nNote"+bcolors.ENDC+": Either tune delta (currently "+str(delta)+") or increase datapoints in dev set to resolve"+bcolors.WARNING+" Errors"+bcolors.ENDC)
