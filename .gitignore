@@ -3,3 +3,4 @@
 *.npy
 *.pyc
 chop-alarm-data
+*copy*
