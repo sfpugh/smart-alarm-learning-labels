@@ -4,3 +4,4 @@
 *.pyc
 chop-alarm-data
 *copy*
+__pycache__/
