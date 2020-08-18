@@ -21,8 +21,9 @@ deactivate
 ```
 
 ## Usage
-Unzip the data to avoid having to re-build it from scratch.
+Unzip the data in the "data" directory to avoid having to re-build it from scratch.
 ```
+cd data/
 unzip data.zip
 ```
 
