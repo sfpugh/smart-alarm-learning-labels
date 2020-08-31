@@ -1,7 +1,7 @@
 
 *.pkl
 *.npy
-*.pyc
-chop-alarm-data
 *copy*
+chop-alarm-data
 __pycache__/
+.ipynb_checkpoints/
