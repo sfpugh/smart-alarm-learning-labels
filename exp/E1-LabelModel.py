@@ -20,27 +20,24 @@ abstain_rate = float(sys.argv[3])   # if < 0 then no abstain rate requested
 n_folds = 5
 
 # Extract relevant data
-L_data = np.copy(L_alarms[:,:57])
-Y_data = np.copy(Y_alarms)
+L_data_local = np.copy(L_data[:,:57])
+Y_data_local = np.copy(Y_data)
 
 # Set up Scorer
 my_metrics = {"abstain rate": lambda golds, preds, probs: np.sum(preds == ABSTAIN) / len(preds)}
 scorer = Scorer(metrics=["accuracy","f1"], custom_metric_funcs=my_metrics)
 
-# 5-fold cross validation
+# Cross validation
 all_scores = []
-kf = KFold(n_splits=n_folds, shuffle=True, random_state=1)
+kf = KFold(n_splits=n_folds, shuffle=True)
 
-for i, (train_idx, test_idx) in enumerate(kf.split(L_data)):
-    if i != 3:
-        continue
-
+for i, (train_idx, test_idx) in enumerate(kf.split(L_data_local)):
     # Define train dataset
-    L_train = L_data[train_idx]
-    Y_train = Y_data[train_idx]
+    L_train = L_data_local[train_idx]
+    Y_train = Y_data_local[train_idx]
     # Define test dataset
-    L_test = L_data[test_idx]
-    Y_test = Y_data[test_idx]
+    L_test = L_data_local[test_idx]
+    Y_test = Y_data_local[test_idx]
 
     # Evaluate a dependency-informed Snorkel model
     l_model = LabelModel(cardinality=2, verbose=False)
@@ -48,7 +45,7 @@ for i, (train_idx, test_idx) in enumerate(kf.split(L_data)):
 
     try:
         if abstain_rate < 0:
-            Y_pred = il_model.predict(L_test, tie_break_policy="abstain")
+            Y_pred = l_model.predict(L_test, tie_break_policy="abstain")
         else:
             Y_prob = l_model.predict_proba(L_test)
             Y_pred = predict_at_abstain_rate(Y_prob, abstain_rate)
@@ -56,7 +53,7 @@ for i, (train_idx, test_idx) in enumerate(kf.split(L_data)):
         scores = scorer.score(Y_test, preds=Y_pred)
         all_scores.append(scores)
     except Exception as e:
-        print("Iter {}: {}".format(i,e))
+        print("Iter {}: {}".format(i+1,e))
         continue
     
     # Logging

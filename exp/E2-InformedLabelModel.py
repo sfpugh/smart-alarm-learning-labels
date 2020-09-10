@@ -23,28 +23,28 @@ abstain_rate = float(sys.argv[5])   # if < 0 then no abstain rate requested
 n_folds = 5
 
 # Extract relevant data
-L_data = np.copy(L_alarms[:,:57])
-Y_data = np.copy(Y_alarms)
+L_data_local = np.copy(L_data[:,:57])
+Y_data_local = np.copy(Y_data)
 
 # Set up Scorer
 my_metrics = {"abstain rate": lambda golds, preds, probs: np.sum(preds == ABSTAIN) / len(preds)}
 scorer = Scorer(metrics=["accuracy","f1"], custom_metric_funcs=my_metrics)
 
-# 5-fold cross validation
+# Cross validation
 all_scores = []
 kf = KFold(n_splits=n_folds, shuffle=True)
 
-for i, (train_dev_idx, test_idx) in enumerate(kf.split(L_data)):
+for i, (train_dev_idx, test_idx) in enumerate(kf.split(L_data_local)):
     train_idx, dev_idx = train_test_split(train_dev_idx, test_size=0.25, shuffle=True)
     # Define train dataset
-    L_train = L_data[train_idx]
-    Y_train = Y_data[train_idx]
+    L_train = L_data_local[train_idx]
+    Y_train = Y_data_local[train_idx]
     # Define development dataset
-    L_dev = L_data[dev_idx]
-    Y_dev = Y_data[dev_idx]
+    L_dev = L_data_local[dev_idx]
+    Y_dev = Y_data_local[dev_idx]
     # Define test dataset
-    L_test = L_data[test_idx]
-    Y_test = Y_data[test_idx]
+    L_test = L_data_local[test_idx]
+    Y_test = Y_data_local[test_idx]
 
     # Learn dependencies
     deps = CDGAM(L_dev, k=2, sig=sig, policy=policy, verbose=False, return_more_info=False)
@@ -64,7 +64,7 @@ for i, (train_dev_idx, test_idx) in enumerate(kf.split(L_data)):
         scores["num deps"] = len(deps)
         all_scores.append(scores)
     except Exception as e:
-        print(e)
+        print("Iter {}: {}".format(i+1,e))
         continue
     
     # Logging
