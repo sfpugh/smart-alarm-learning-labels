@@ -1,7 +1,0 @@
-This file contains rough descriptions of the files in this folder.
-
-- RECORDS-numerics : file containing paths to MIMIC-III waveform data
-- extract_spo2_alarms_ver*.py : code to extract spo2 low alarms from MIMIC-III waveform data
-- learn_labels_ver*.py : analysis of snorkel label model on CHOP data (this is outdated now)
-- learning_spo2alarm_labels*.py : analysis of snorkel label model trained on MIMIC-III data
-- spo2alarms_LFs.py : labeling functions designed to label MIMIC-III data
