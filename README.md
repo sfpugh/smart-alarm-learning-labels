@@ -21,20 +21,25 @@ deactivate
 ```
 
 ## Usage
-Unzip the data to avoid having to re-build it from scratch.
+For each example, there exists a jupyter notebook `*_STABLE.ipynb` in the example's directory. You can open the notebook with the following command.
 ```
-cd data/
+jupyter notebook <blah>_STABLE.ipynb
+```
+
+Then activate the virtual environment created in the installation step by navigating to the 'Kernel' tab in the toolbar, then hover on 'Change kernel', then select the proper environment.
+
+To run experiments in the `exp` directory, append cells to the end of the notebook that invoke the experiment script like the following. 
+```
+%run -i ../exp/<E#-description>.ipynb <params_if_necessary>
+```
+
+## Notes
+- To avoid re-building the smart alarm data (which is time consuming), unzip the data in directory `smart_alarm/data`.
+```
+cd smart_alarm/data/
 unzip data.zip
 ```
 
-Jupyter notebook "learn_labels_STABLE.ipynb" is the notebook from which you should call all other experiments in "./Experiments". You can open the notebook with the following command.
-```
-jupyter notebook learn_labels_STABLE.ipynb
-```
-Then activate the virtual environment created in the installation steps by navigating to the 'Kernel' tab in the toolbar, then hover on 'Change kernel', then select the proper environment. Edit the last cell in the notebook to run the experiment of interest as follows, then run all cells.
-```
-%run ./Experiments/<E#-description>.ipynb
-```
 
 ## Resources
 - Snorkel https://www.snorkel.org 
