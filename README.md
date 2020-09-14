@@ -7,15 +7,15 @@ Clone this repository.
 git clone https://github.com/sfpugh/smart-alarm-learning-labels.git
 ```
 
-Create a virtual environment using Python3 virtualenv and add it to Jupyter Notebook.
+Create a virtual environment using Python3 virtualenv and add it to Jupyter Notebook per example. Use the following instructions, replacing `<example_dir>` with the name of the directory the example is in and `<example_env_name>` with a name for the virtual environment of that example.
 ```
 pip3 install --upgrade virtualenv
-virtualenv -p python3 <env_name>
-source <env_name>/bin/activate
+virtualenv -p python3 <example_env_name>
+source <example_env_name>/bin/activate
 
-pip install -r requirements.txt
+pip install -r <example_dir>/requirements.txt
 
-python -m ipykernel install --user --name=<env_name>
+python -m ipykernel install --user --name=<example_env_name>
 
 deactivate
 ```
