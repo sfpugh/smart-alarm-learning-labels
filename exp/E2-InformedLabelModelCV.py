@@ -5,10 +5,10 @@ from Our_Monitors.CDGA_Monitor_fast import CDGAM_fast as CDGAM
 from snorkel.analysis import Scorer
 from itertools import product
 
-import my_utils
+import utils
 import importlib
-importlib.reload(my_utils)
-from my_utils import predict_at_abstain_rate
+importlib.reload(utils)
+from utils import predict_at_abstain_rate
 
 # Extract arguments
 abstain_rate = float(sys.argv[1])
@@ -25,7 +25,6 @@ scorer = Scorer(metrics=["accuracy","f1"], custom_metric_funcs=my_metrics)
 n_folds = 5
 
 sigs = [0.01, 0.05, 0.1]
-policy = "new"
 n_epochs = [100, 500, 1000]
 lr = [0.01, 0.05, 0.1]
 l2 = [0.0, 0.01, 0.1]
@@ -54,8 +53,9 @@ for fold, (train_dev_idx, test_idx) in enumerate(kf.split(L_data_local)):
     for params in all_params:
         # Learn dependencies
         if prev_sig != params[0]:
-            deps = CDGAM(L_dev, k=2, sig=params[0], policy=policy, verbose=False, return_more_info=False)
+            deps = CDGAM(L_dev, k=2, sig=params[0], policy="new", verbose=False, return_more_info=False)
             prev_sig = params[0]
+            print('here...')
 
         # Evaluate a dependency-informed Snorkel model
         il_model = Informed_LabelModel(deps, cardinality=2, verbose=False)
@@ -78,8 +78,9 @@ for fold, (train_dev_idx, test_idx) in enumerate(kf.split(L_data_local)):
 
 # Determine best parameters by average scores
 cv_avg_scores = np.nanmean(results, axis=1)
-i_best_acc = np.argmax(cv_avg_scores[:,0])
-i_best_f1 = np.argmax(cv_avg_scores[:,1])
+np.save("cv_ilm.npy", cv_avg_scores)
+i_best_acc = np.nanargmax(cv_avg_scores[:,0])
+i_best_f1 = np.nanargmax(cv_avg_scores[:,1])
 
 print("- Best Accuracy -")
 print("params: ", all_params[i_best_acc])

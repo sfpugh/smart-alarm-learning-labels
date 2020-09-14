@@ -5,16 +5,19 @@ from sklearn.model_selection import KFold, train_test_split
 from snorkel.labeling.model import LabelModel
 from snorkel.analysis import Scorer
 
-import my_utils
+import utils
 import importlib
-importlib.reload(my_utils)
-from my_utils import predict_at_abstain_rate
+importlib.reload(utils)
+from utils import predict_at_abstain_rate
 
 
 # Extract parameters from arguments
 n_epochs = int(sys.argv[1])
 lr = float(sys.argv[2])
-abstain_rate = float(sys.argv[3])   # if < 0 then no abstain rate requested
+l2 = float(sys.argv[3])
+optimizer = str(sys.argv[4])
+lr_scheduler = str(sys.argv[5])
+abstain_rate = float(sys.argv[6])   # if < 0 then no abstain rate requested
 
 # Other parameters
 n_folds = 5
@@ -41,7 +44,7 @@ for i, (train_idx, test_idx) in enumerate(kf.split(L_data_local)):
 
     # Evaluate a dependency-informed Snorkel model
     l_model = LabelModel(cardinality=2, verbose=False)
-    l_model.fit(L_train, n_epochs=n_epochs, lr=lr)
+    l_model.fit(L_train, n_epochs=n_epochs, lr=lr, l2=l2, optimizer=optimizer, lr_scheduler=lr_scheduler)
 
     try:
         if abstain_rate < 0:

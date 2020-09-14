@@ -10,10 +10,10 @@ from Our_Monitors.CDGA_Monitor_fast import CDGAM_fast as CDGAM
 from Our_Monitors.New_Monitor_fast import NM_fast as NM
 from snorkel.analysis import Scorer
 
-import my_utils
+import utils
 import importlib
-importlib.reload(my_utils)
-from my_utils import predict_at_abstain_rate
+importlib.reload(utils)
+from utils import predict_at_abstain_rate
 
 
 # Ensure data matricies are defined
@@ -56,7 +56,7 @@ def find_deps(m, L_dev, Y_dev):
     elif m == "NM":
         return NM(L_dev, Y_dev, k=2, sig=sig, policy=policy, verbose=False, return_more_info=False)
     else:
-            raise Exception("Invalid monitor...")
+        raise Exception("Invalid monitor...")
 
 def thread_experiment(exp, L_train, Y_train, L_dev, Y_dev, L_test, Y_test):
     for iter in range(n_iters):
@@ -120,8 +120,7 @@ for exp, thread in enumerate(threads):
 
 
 ## Save results
-filename = "e6_(" + str(n_exps) + "," + str(n_iters) + "," + str(n_subsets) + "," + str(subset_size) + "," + str(with_replacement) + "," + str(abstain_rate) + ").npy"
-np.save(filename, results_mtx)
+np.save("e6_(" + ",".join(sys.argv[1:]) + ").npy", results_mtx)
 
 
 ## Plot

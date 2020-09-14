@@ -6,18 +6,20 @@ from Our_Monitors.CD_Monitor import Informed_LabelModel
 from Our_Monitors.CDGA_Monitor_fast import CDGAM_fast as CDGAM
 from snorkel.analysis import Scorer
 
-import my_utils
+import utils
 import importlib
-importlib.reload(my_utils)
-from my_utils import predict_at_abstain_rate
+importlib.reload(utils)
+from utils import predict_at_abstain_rate
 
 
 # Extract parameters from arguments
-n_epochs = int(sys.argv[1])
-lr = float(sys.argv[2])
-sig = float(sys.argv[3])
-policy = str(sys.argv[4])
-abstain_rate = float(sys.argv[5])   # if < 0 then no abstain rate requested
+sig = float(sys.argv[1])
+n_epochs = int(sys.argv[2])
+lr = float(sys.argv[3])
+l2 = float(sys.argv[4])
+optimizer = str(sys.argv[5])
+lr_scheduler = str(sys.argv[6])
+abstain_rate = float(sys.argv[7])   # if < 0 then no abstain rate requested
 
 # Other parameters
 n_folds = 5
@@ -47,17 +49,17 @@ for i, (train_dev_idx, test_idx) in enumerate(kf.split(L_data_local)):
     Y_test = Y_data_local[test_idx]
 
     # Learn dependencies
-    deps = CDGAM(L_dev, k=2, sig=sig, policy=policy, verbose=False, return_more_info=False)
+    deps = CDGAM(L_dev, k=2, sig=sig, policy="new", verbose=False, return_more_info=False)
 
     # Evaluate a dependency-informed Snorkel model
     il_model = Informed_LabelModel(deps, cardinality=2, verbose=False)
-    il_model.fit(L_train, n_epochs=n_epochs, lr=lr)
+    il_model.fit(L_train, n_epochs=n_epochs, lr=lr, l2=l2, optimizer=optimizer, lr_scheduler=lr_scheduler)
 
     try:
         if abstain_rate < 0:
             Y_pred = il_model.predict(L_test, tie_break_policy="abstain")
         else:
-            Y_prob = l_model.predict_proba(L_test)
+            Y_prob = il_model.predict_proba(L_test)
             Y_pred = predict_at_abstain_rate(Y_prob, abstain_rate)
 
         scores = scorer.score(Y_test, preds=Y_pred)
