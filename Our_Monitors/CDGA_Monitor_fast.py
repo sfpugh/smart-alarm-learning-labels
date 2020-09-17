@@ -92,7 +92,7 @@ def CDGAM_fast(L_dev, k = 2, sig = 0.01, policy = 'new', verbose = False, return
 	if verbose:
 		non_delta_tuple_indices = []
 		for q in range(len(CT_reduced_list)):
-			for r in range(len(CT_reduced_list[q])):
+			for r in range(len(CT_reduced_list[q])): # (modified to len(qth element) for fast version)
 				delta = 1
 				if ~(CT_reduced_list[q][r]==delta).all():
 					non_delta_tuple_indices.append( ((q,r), (q,r)) ) # apending a tuple of tuples because first part of outer tuple is key and second is value passed gy slider to fn
