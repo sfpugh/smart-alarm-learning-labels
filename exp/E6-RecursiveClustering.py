@@ -1,24 +1,28 @@
 import sys
 sys.path.append("../")
+
 import threading
 import numpy as np
 import matplotlib.pyplot as plt
-from Our_Monitors.CD_Monitor import Informed_LabelModel
+from time import time
+from snorkel.analysis import Scorer
+
+from Our_Monitors.CD_Monitor import Informed_LabelModel, CDM
 #from Our_Monitors.CDGA_Monitor import CDGAM
 from Our_Monitors.CDGA_Monitor_fast import CDGAM_fast as CDGAM
 #from Our_Monitors.New_Monitor import NM
 from Our_Monitors.New_Monitor_fast import NM_fast as NM
-from snorkel.analysis import Scorer
 
 import utils
 import importlib
 importlib.reload(utils)
 from utils import predict_at_abstain_rate
 
+np.random.seed(int(time()))
 
 # Ensure data matricies are defined
 try:
-    L_train_local, Y_train_local = np.copy(L_train), np.copy(Y_train)   # 80% train
+    L_train_local = np.copy(L_train)                                    # 80% train
     L_dev_local, Y_dev_local = np.copy(L_dev), np.copy(Y_dev)           # 10% dev
     L_test_local, Y_test_local = np.copy(L_test), np.copy(Y_test)       # 10% test
 except:
@@ -35,7 +39,7 @@ abstain_rate = float(sys.argv[7])       # if < 0 then no abstain rate requested
 
 # Other parameters
 sig = 0.05
-policy = "new"
+policy = "old"
 n_epochs = 100
 lr = 0.01
 
@@ -51,14 +55,16 @@ results_mtx = np.empty((n_exps,n_iters,n_metrics), dtype=float)
 results_mtx[:] = np.nan
 
 def find_deps(m, L_dev, Y_dev):
-    if m == "CDGAM":
+    if m == "CDM":
+        return CDM(L_dev, Y_dev, k=2, sig=sig, policy=policy, verbose=False, return_more_info=False)
+    elif m == "CDGAM":
         return CDGAM(L_dev, k=2, sig=sig, policy=policy, verbose=False, return_more_info=False)
     elif m == "NM":
         return NM(L_dev, Y_dev, k=2, sig=sig, policy=policy, verbose=False, return_more_info=False)
     else:
         raise Exception("Invalid monitor...")
 
-def thread_experiment(exp, L_train, Y_train, L_dev, Y_dev, L_test, Y_test):
+def thread_experiment(exp, L_train, L_dev, Y_dev, L_test, Y_test):
     for iter in range(n_iters):
         # Randomly sample J sets of K LFs
         subsets = np.random.choice(L_train.shape[1], size=(n_subsets,subset_size), replace=with_replacement)
@@ -70,7 +76,9 @@ def thread_experiment(exp, L_train, Y_train, L_dev, Y_dev, L_test, Y_test):
         new_L_test = np.zeros((L_test.shape[0],n_subsets))  
 
         for i, subset in enumerate(subsets):
+            print(subset)
             deps = find_deps(monitor, L_dev[:,subset], Y_dev)
+            print(len(deps))
             il_model = Informed_LabelModel(deps, cardinality=2)
             il_model.fit(L_train[:,subset], n_epochs=n_epochs, lr=lr)
 
@@ -83,19 +91,20 @@ def thread_experiment(exp, L_train, Y_train, L_dev, Y_dev, L_test, Y_test):
         L_test = np.copy(new_L_test)
 
         # Train and evaluate a dependency-informed Snorkel model
-        deps = find_deps(monitor, L_dev, Y_dev)
-        il_model = Informed_LabelModel(deps, cardinality=2)
-        il_model.fit(L_train, n_epochs=n_epochs, lr=lr)
-
         try:
+            deps = find_deps(monitor, L_dev, Y_dev)
+            il_model = Informed_LabelModel(deps, cardinality=2)
+            il_model.fit(L_train, n_epochs=n_epochs, lr=lr)
+
             if abstain_rate < 0:
-                Y_pred = il_model.predict(L_train)
+                Y_pred = il_model.predict(L_test)
             else:
-                Y_prob = il_model.predict_proba(L_train)
+                Y_prob = il_model.predict_proba(L_test)
                 Y_pred = predict_at_abstain_rate(Y_prob, abstain_rate)
 
-            iter_scores = scorer.score(Y_train, preds=Y_pred)
+            iter_scores = scorer.score(Y_test, preds=Y_pred)
             iter_scores["num deps"] = len(deps)
+            print(iter_scores)
             
             mutex.acquire()
             results_mtx[exp,iter,:] = list(iter_scores.values())
@@ -110,7 +119,7 @@ threads = []
 
 for exp in range(n_exps):
     print("Main: create and start experiment thread {}".format(exp)) 
-    x = threading.Thread(target=thread_experiment, args=(exp, L_train_local, Y_train_local, L_dev_local, Y_dev_local, L_test_local, Y_test_local))
+    x = threading.Thread(target=thread_experiment, args=(exp, L_train_local, L_dev_local, Y_dev_local, L_test_local, Y_test_local))
     threads.append(x)
     x.start()
 
@@ -131,6 +140,7 @@ fig.suptitle("E6 Results (exps=" + str(n_exps)
                         + ", K=" + str(subset_size) 
                         + ", \nreplacement=" + str(with_replacement) 
                         + ", abstain=" + str(abstain_rate) 
+                        + ", sig=" + str(sig)
                         + ")", y=0.95) 
 # Accuracy
 mask = ~np.isnan(results_mtx[:,:,0])

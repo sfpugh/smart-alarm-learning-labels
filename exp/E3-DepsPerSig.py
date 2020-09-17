@@ -18,11 +18,11 @@ Y_Dev = np.copy(Y_dev)
 policy = "old"
 
 # Find all possible dependencies, i.e., dont set a sig
-CDM_deps = CDM(L_Dev, Y_Dev, k=2, sig=1.0, policy=policy, verbose=False, return_more_info=True)
+CDM_deps = CDM(L_Dev, Y_Dev, k=2, sig=1.1, policy=policy, verbose=False, return_more_info=True)
 logging.info("CDM finished...")
-CDGAM_deps = CDGAM(L_Dev, k=2, sig=1.0, policy=policy, verbose=False, return_more_info=True)
+CDGAM_deps = CDGAM(L_Dev, k=2, sig=1.1, policy=policy, verbose=False, return_more_info=True)
 logging.info("CDGAM finished...")
-NM_deps = NM(L_Dev, Y_Dev, k=2, sig=1.0, policy=policy, verbose=False, return_more_info=True)
+NM_deps = NM(L_Dev, Y_Dev, k=2, sig=1.1, policy=policy, verbose=False, return_more_info=True)
 logging.info("NM finished...")
 
 # Determine number of dependencies per sig level
