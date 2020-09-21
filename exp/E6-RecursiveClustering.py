@@ -7,24 +7,21 @@ import matplotlib.pyplot as plt
 from time import time
 from snorkel.analysis import Scorer
 
-from Our_Monitors.CD_Monitor import Informed_LabelModel, CDM
-#from Our_Monitors.CDGA_Monitor import CDGAM
+from Our_Monitors.CD_Monitor import Informed_LabelModel
 from Our_Monitors.CDGA_Monitor_fast import CDGAM_fast as CDGAM
-#from Our_Monitors.New_Monitor import NM
-from Our_Monitors.New_Monitor_fast import NM_fast as NM
 
 import utils
 import importlib
 importlib.reload(utils)
 from utils import predict_at_abstain_rate
 
+# Seed numpy to get different sequences of subsets
 np.random.seed(int(time()))
 
-# Ensure data matricies are defined
+# Copy data from source notebook
 try:
-    L_train_local = np.copy(L_train)                                    # 80% train
-    L_dev_local, Y_dev_local = np.copy(L_dev), np.copy(Y_dev)           # 10% dev
-    L_test_local, Y_test_local = np.copy(L_test), np.copy(Y_test)       # 10% test
+    L_data_local = np.copy(L_data)
+    Y_data_local = np.copy(Y_data)
 except:
     raise Exception("Data not defined properly...")
 
@@ -34,12 +31,11 @@ n_iters = int(sys.argv[2])              # N
 n_subsets = int(sys.argv[3])            # J
 subset_size = int(sys.argv[4])          # K
 with_replacement = bool(sys.argv[5])
-monitor = str(sys.argv[6])
-abstain_rate = float(sys.argv[7])       # if < 0 then no abstain rate requested
+sig = float(sys.argv[6])
+policy = str(sys.argv[7])
+abstain_rate = float(sys.argv[8])       # if < 0 then no abstain rate requested
 
 # Other parameters
-sig = 0.05
-policy = "old"
 n_epochs = 100
 lr = 0.01
 
@@ -54,57 +50,40 @@ mutex = threading.Lock()
 results_mtx = np.empty((n_exps,n_iters,n_metrics), dtype=float)
 results_mtx[:] = np.nan
 
-def find_deps(m, L_dev, Y_dev):
-    if m == "CDM":
-        return CDM(L_dev, Y_dev, k=2, sig=sig, policy=policy, verbose=False, return_more_info=False)
-    elif m == "CDGAM":
-        return CDGAM(L_dev, k=2, sig=sig, policy=policy, verbose=False, return_more_info=False)
-    elif m == "NM":
-        return NM(L_dev, Y_dev, k=2, sig=sig, policy=policy, verbose=False, return_more_info=False)
-    else:
-        raise Exception("Invalid monitor...")
-
-def thread_experiment(exp, L_train, L_dev, Y_dev, L_test, Y_test):
+def thread_experiment(exp, L_data, Y_data):
     for iter in range(n_iters):
         # Randomly sample J sets of K LFs
-        subsets = np.random.choice(L_train.shape[1], size=(n_subsets,subset_size), replace=with_replacement)
+        subsets = np.random.choice(L_data.shape[1], size=(n_subsets,subset_size), replace=with_replacement)
 
-        # Define a new LF for each of the J sets as the prediction of a dependency-informed 
-        # Snorkel model with the K LFs    
-        new_L_train = np.zeros((L_train.shape[0],n_subsets))
-        new_L_dev = np.zeros((L_dev.shape[0],n_subsets))
-        new_L_test = np.zeros((L_test.shape[0],n_subsets))  
+        # Define a new LF for each of the J sets as the prediction 
+        # of a dependency-informed Snorkel model with the K LFs    
+        new_L_data = np.zeros((L_data.shape[0],n_subsets))
 
         for i, subset in enumerate(subsets):
-            print(subset)
-            deps = find_deps(monitor, L_dev[:,subset], Y_dev)
-            print(len(deps))
-            il_model = Informed_LabelModel(deps, cardinality=2)
-            il_model.fit(L_train[:,subset], n_epochs=n_epochs, lr=lr)
+            deps = CDGAM(L_data[:,subset], k=2, sig=sig, policy=policy, verbose=False, return_more_info=False)
 
-            new_L_train[:,i] = il_model.predict(L_train[:,subset])
-            new_L_dev[:,i] = il_model.predict(L_dev[:,subset])
-            new_L_test[:,i] = il_model.predict(L_test[:,subset])
+            il_model = Informed_LabelModel(deps, cardinality=2)
+            il_model.fit(L_data[:,subset], n_epochs=n_epochs, lr=lr)
+
+            new_L_data[:,i] = il_model.predict(L_data[:,subset])
             
-        L_train = np.copy(new_L_train)
-        L_dev = np.copy(new_L_dev)
-        L_test = np.copy(new_L_test)
+        L_data = np.copy(new_L_data)
 
         # Train and evaluate a dependency-informed Snorkel model
         try:
-            deps = find_deps(monitor, L_dev, Y_dev)
+            deps = CDGAM(L_data, k=2, sig=sig, policy=policy, verbose=False, return_more_info=False)
+
             il_model = Informed_LabelModel(deps, cardinality=2)
-            il_model.fit(L_train, n_epochs=n_epochs, lr=lr)
+            il_model.fit(L_data, n_epochs=n_epochs, lr=lr)
 
             if abstain_rate < 0:
-                Y_pred = il_model.predict(L_test)
+                Y_pred = il_model.predict(L_data)
             else:
-                Y_prob = il_model.predict_proba(L_test)
+                Y_prob = il_model.predict_proba(L_data)
                 Y_pred = predict_at_abstain_rate(Y_prob, abstain_rate)
 
-            iter_scores = scorer.score(Y_test, preds=Y_pred)
+            iter_scores = scorer.score(Y_data, preds=Y_pred)
             iter_scores["num deps"] = len(deps)
-            print(iter_scores)
             
             mutex.acquire()
             results_mtx[exp,iter,:] = list(iter_scores.values())
@@ -119,7 +98,7 @@ threads = []
 
 for exp in range(n_exps):
     print("Main: create and start experiment thread {}".format(exp)) 
-    x = threading.Thread(target=thread_experiment, args=(exp, L_train_local, L_dev_local, Y_dev_local, L_test_local, Y_test_local))
+    x = threading.Thread(target=thread_experiment, args=(exp, L_data_local, Y_data_local))
     threads.append(x)
     x.start()
 
@@ -128,13 +107,14 @@ for exp, thread in enumerate(threads):
     print("Main: experiment thread {} done".format(exp))
 
 
-## Save results
+## Save result matrix
 np.save("e6_(" + ",".join(sys.argv[1:]) + ").npy", results_mtx)
 
 
 ## Plot
+# We drop data for which we could not achieve the target abstain rate
 fig, (ax1, ax2, ax3) = plt.subplots(3, figsize=(4,10))
-fig.suptitle("E6 Results (exps=" + str(n_exps)
+fig.suptitle("E6 Results (n_exps=" + str(n_exps)
                         + ", N=" + str(n_iters) 
                         + ", J=" + str(n_subsets) 
                         + ", K=" + str(subset_size) 

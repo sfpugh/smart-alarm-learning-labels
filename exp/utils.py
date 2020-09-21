@@ -71,11 +71,11 @@ def predict_at_abstain_rate(Y_prob, abstain_target):
         return Y_pred
 
     # Otherwise BinarySearch
-    for n in range(50):
+    for n in range(25):
         t_mid = t_lo + (t_hi - t_lo) / 2
         Y_pred = np.apply_along_axis(threshold_predict, 1, Y_prob, t_mid)
         abstain = np.sum(Y_pred == ABSTAIN) / len(Y_pred)
-        #print("A {:.18f}, L {}, H {}".format(abstain,t_lo,t_hi))
+        logging.info("A {:.18f}, L {}, H {}".format(abstain,t_lo,t_hi))
         
         if abstain > abstain_target:
             t_hi = t_mid
@@ -92,6 +92,9 @@ def predict_at_abstain_rate(Y_prob, abstain_target):
     abstain_hi = np.sum(Y_pred_hi == ABSTAIN) / len(Y_pred_hi)
     if (abstain_hi >= abstain_target - tol) and (abstain_hi < abstain_target + tol):
         return Y_pred_hi
+    
+    logging.info("binsearch cannot converge further than [{:.3f},{:.3f}]...threshold window is size {}".format(abstain_lo, abstain_hi ,t_hi-t_lo))
+    logging.info(abstain_lo, abstain_hi)
 
     # Toss coin
     idx_uncertain = np.argwhere( np.apply_along_axis(lambda Y: Y[0] == Y[1], 1, Y_prob) )
@@ -100,7 +103,6 @@ def predict_at_abstain_rate(Y_prob, abstain_target):
     for i in range(25):
         Y_pred_hi[idx_uncertain] = np.random.choice([ABSTAIN, NOT_SUPPRESSIBLE, SUPPRESSIBLE], size=(len(idx_uncertain),1), p=[p, (1-p)/2, (1-p)/2])
         abstain = np.sum(Y_pred_hi == ABSTAIN) / len(Y_pred_hi)
-        print("@ p ", abstain)
         if (abstain >= abstain_target - tol) and (abstain < abstain_target + tol):
             return Y_pred_hi 
     
