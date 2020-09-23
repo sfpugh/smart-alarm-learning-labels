@@ -1,4 +1,5 @@
 import sys
+sys.path.append("../")
 import logging
 import numpy as np
 from sklearn.model_selection import KFold, train_test_split
@@ -23,9 +24,10 @@ abstain_rate = float(sys.argv[7])   # if < 0 then no abstain rate requested
 
 # Other parameters
 n_folds = 5
+policy = "old"
 
 # Extract relevant data
-L_data_local = np.copy(L_data[:,:57])
+L_data_local = np.copy(L_data)
 Y_data_local = np.copy(Y_data)
 
 # Set up Scorer
@@ -37,19 +39,19 @@ all_scores = []
 kf = KFold(n_splits=n_folds, shuffle=True)
 
 for i, (train_dev_idx, test_idx) in enumerate(kf.split(L_data_local)):
-    train_idx, dev_idx = train_test_split(train_dev_idx, test_size=0.25, shuffle=True)
+    #train_idx, dev_idx = train_test_split(train_dev_idx, test_size=0.25, shuffle=True)
     # Define train dataset
-    L_train = L_data_local[train_idx]
-    Y_train = Y_data_local[train_idx]
+    L_train = L_data_local[train_dev_idx]
+    Y_train = Y_data_local[train_dev_idx]
     # Define development dataset
-    L_dev = L_data_local[dev_idx]
-    Y_dev = Y_data_local[dev_idx]
+    L_dev = L_data_local[train_dev_idx]
+    Y_dev = Y_data_local[train_dev_idx]
     # Define test dataset
     L_test = L_data_local[test_idx]
     Y_test = Y_data_local[test_idx]
 
     # Learn dependencies
-    deps = CDGAM(L_dev, k=2, sig=sig, policy="new", verbose=False, return_more_info=False)
+    deps = CDGAM(L_dev, k=2, sig=sig, policy=policy, verbose=False, return_more_info=False)
 
     # Evaluate a dependency-informed Snorkel model
     il_model = Informed_LabelModel(deps, cardinality=2, verbose=False)
@@ -70,7 +72,7 @@ for i, (train_dev_idx, test_idx) in enumerate(kf.split(L_data_local)):
         continue
     
     # Logging
-    print("Iteration " + str(i+1) + ":",  scores)
+    logging.INFO("Iteration " + str(i+1) + ":" + str(scores))
 
 print("-- SUMMARY --")
 print("accuracy: AVG {:.3f}, STD {:.3f}".format(np.mean([s["accuracy"] for s in all_scores]), np.std([s["accuracy"] for s in all_scores])))

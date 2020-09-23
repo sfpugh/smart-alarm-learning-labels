@@ -72,7 +72,11 @@ def thread_experiment(exp, L_data, Y_data):
         # Train and evaluate a dependency-informed Snorkel model
         try:
             deps = CDGAM(L_data, k=2, sig=sig, policy=policy, verbose=False, return_more_info=False)
-
+            print(len(deps))
+            mutex.acquire()
+            results_mtx[exp,iter,3] = len(deps)
+            mutex.release()
+            
             il_model = Informed_LabelModel(deps, cardinality=2)
             il_model.fit(L_data, n_epochs=n_epochs, lr=lr)
 
@@ -82,11 +86,10 @@ def thread_experiment(exp, L_data, Y_data):
                 Y_prob = il_model.predict_proba(L_data)
                 Y_pred = predict_at_abstain_rate(Y_prob, abstain_rate)
 
-            iter_scores = scorer.score(Y_data, preds=Y_pred)
-            iter_scores["num deps"] = len(deps)
+            scores = scorer.score(Y_data, preds=Y_pred)
             
             mutex.acquire()
-            results_mtx[exp,iter,:] = list(iter_scores.values())
+            results_mtx[exp,iter,0:3] = list(scores.values())
             mutex.release()
         except Exception as e:
             print("Thread {}: Iter {}: {}".format(exp,iter,e))
@@ -94,17 +97,21 @@ def thread_experiment(exp, L_data, Y_data):
 
 
 ## Run the experiment several times
-threads = []
+#threads = []
+
+#for exp in range(n_exps):
+#    print("Main: create and start experiment thread {}".format(exp)) 
+#    x = threading.Thread(target=thread_experiment, args=(exp, L_data_local, Y_data_local))
+#    threads.append(x)
+#    x.start()
+
+#for exp, thread in enumerate(threads):
+#    thread.join()
+#    print("Main: experiment thread {} done".format(exp))
 
 for exp in range(n_exps):
-    print("Main: create and start experiment thread {}".format(exp)) 
-    x = threading.Thread(target=thread_experiment, args=(exp, L_data_local, Y_data_local))
-    threads.append(x)
-    x.start()
-
-for exp, thread in enumerate(threads):
-    thread.join()
-    print("Main: experiment thread {} done".format(exp))
+    thread_experiment(exp, L_data_local, Y_data_local)
+    print("exp {} finished...".format(exp))
 
 
 ## Save result matrix

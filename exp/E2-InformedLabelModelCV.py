@@ -1,9 +1,13 @@
 import sys
-from sklearn.model_selection import KFold, train_test_split
-from Our_Monitors.CD_Monitor import Informed_LabelModel
-from Our_Monitors.CDGA_Monitor_fast import CDGAM_fast as CDGAM
-from snorkel.analysis import Scorer
+sys.path.append("../")
+
+import numpy as np
 from itertools import product
+from snorkel.analysis import Scorer
+
+from Our_Monitors.CD_Monitor import Informed_LabelModel, CDM
+from Our_Monitors.CDGA_Monitor_fast import CDGAM_fast as CDGAM
+from Our_Monitors.New_Monitor_fast import NM_fast as NM
 
 import utils
 import importlib
@@ -11,81 +15,58 @@ importlib.reload(utils)
 from utils import predict_at_abstain_rate
 
 # Extract arguments
-abstain_rate = float(sys.argv[1])
+monitor = str(sys.argv[1])
+abstain_rate = float(sys.argv[2])
 
 # Extract relevant data
-L_data_local = np.copy(L_data[:,:57])
-Y_data_local = np.copy(Y_data)
+L_Data = np.copy(L_data)
+Y_Data = np.copy(Y_data)
 
 # Set up Scorer
 my_metrics = {"abstain rate": lambda golds, preds, probs: np.sum(preds == ABSTAIN) / len(preds)}
 scorer = Scorer(metrics=["accuracy","f1"], custom_metric_funcs=my_metrics)
 
-# Parameters
-n_folds = 5
+# Experiment
+sig = np.flip( np.linspace(0, 0.5, num=50, dtype=float)[1:], 0 )
+policy = ["new"]
 
-sigs = [0.01, 0.05, 0.1]
 n_epochs = [100, 500, 1000]
 lr = [0.01, 0.05, 0.1]
 l2 = [0.0, 0.01, 0.1]
 optimizer = ["sgd", "adam", "adamax"]
 lr_scheduler = ["constant", "linear", "exponential", "step"]
 
-all_params = list(product(sigs, n_epochs, lr, l2, optimizer, lr_scheduler))
-
-# Cross validation
-results = np.empty((len(all_params), n_folds, 3), dtype=float)
+param_combos = list(product(sig, policy, n_epochs, lr, l2, optimizer, lr_scheduler))
+results = np.empty((len(param_combos), 4), dtype=float)
 results[:] = np.nan
 
-kf = KFold(n_splits=n_folds, shuffle=True)
+prev_sig = None
 
-for fold, (train_dev_idx, test_idx) in enumerate(kf.split(L_data_local)):
-    train_idx, dev_idx = train_test_split(train_dev_idx, test_size=0.25, shuffle=True)
-    # Define train dataset
-    L_train, Y_train = L_data_local[train_idx], Y_data_local[train_idx]
-    # Define development dataset
-    L_dev, Y_dev = L_data_local[dev_idx], Y_data_local[dev_idx]
-    # Define test dataset
-    L_test, Y_test = L_data_local[test_idx], Y_data_local[test_idx]
-
-    i = 0
-    prev_sig = -1
-    for params in all_params:
+for i, params in enumerate(param_combos):
+    if prev_sig != params[0]:
+        prev_sig = params[0]
+        
         # Learn dependencies
-        if prev_sig != params[0]:
-            deps = CDGAM(L_dev, k=2, sig=params[0], policy="new", verbose=False, return_more_info=False)
-            prev_sig = params[0]
-            print('here...')
+        if monitor == "CDM":
+            deps = CDM(L_Data, Y_data, k=2, sig=params[0], policy=params[1], verbose=False, return_more_info=False)
+        elif monitor == "CDGAM":
+            deps = CDGAM(L_Data, k=2, sig=params[0], policy=params[1], verbose=False, return_more_info=False)
+        elif monitor == "NM":
+            deps = NM(L_Data, Y_data, k=2, sig=params[0], policy=params[1], verbose=False, return_more_info=False)
 
-        # Evaluate a dependency-informed Snorkel model
+    print(len(deps))
+    results[i,3] = len(deps)
+    
+    # Train and evaluate an Informed Label Model
+    try:
         il_model = Informed_LabelModel(deps, cardinality=2, verbose=False)
-        il_model.fit(L_train, n_epochs=params[1], lr=params[2], l2=params[3], optimizer=params[4], lr_scheduler=params[5])
+        il_model.fit(L_Data, n_epochs=params[2], lr=params[3], l2=params[4], optimizer=params[5], lr_scheduler=params[6])
 
-        try:
-            if abstain_rate < 0:
-                Y_pred = il_model.predict(L_test, tie_break_policy="abstain")
-            else:
-                Y_prob = il_model.predict_proba(L_test)
-                Y_pred = predict_at_abstain_rate(Y_prob, abstain_rate)
+        Y_prob = il_model.predict_proba(L_Data)
+        Y_pred = predict_at_abstain_rate(Y_prob, abstain_rate)
 
-            scores = scorer.score(Y_test, preds=Y_pred)
-            results[i,fold,:] = list(scores.values())
-        except Exception as e:
-            print("Iter {}: {}".format(fold+1, e))
-            continue
+        results[i,0:3] = list( scorer.score(Y_Data, preds=Y_pred).values() )
+    except Exception as e:
+        print("{}: {}".format(params, e))
 
-        i += 1
-
-# Determine best parameters by average scores
-cv_avg_scores = np.nanmean(results, axis=1)
-np.save("cv_ilm.npy", cv_avg_scores)
-i_best_acc = np.nanargmax(cv_avg_scores[:,0])
-i_best_f1 = np.nanargmax(cv_avg_scores[:,1])
-
-print("- Best Accuracy -")
-print("params: ", all_params[i_best_acc])
-print("scores: ", cv_avg_scores[i_best_acc])
-
-print("- Best F1 -")
-print("params: ", all_params[i_best_f1])
-print("scores: ", cv_avg_scores[i_best_f1])
+np.save("e2-results-({},{}).npy".format(monitor, abstain_rate), results)
