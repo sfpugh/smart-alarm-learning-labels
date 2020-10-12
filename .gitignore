@@ -1,6 +1,7 @@
 
 *.pkl
 *.npy
+*.png
 *copy*
 __pycache__/
 .ipynb_checkpoints/
