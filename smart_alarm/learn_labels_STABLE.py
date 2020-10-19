@@ -1,9 +1,6 @@
-# To add a new cell, type '# %%'
-# To add a new markdown cell, type '# %% [markdown]'
-# %%
-from IPython import get_ipython
+#!/usr/bin/env python
+# coding: utf-8
 
-# %% [markdown]
 # # Smart Alarm 2.0: Learning SpO2 Alarm Labels
 # 
 # Smart Alarm 2.0 is concerned with reducing the number of false SpO2 low alarms produced by pulse oximetry machines. We intend to use some machine learning techniques in order to make a "smart" alarm that will automatically suppress false alarms. A big challenge with ML is that large labeled datasets are unavailable and expensive to produce. Hence, here we are experimenting with the Snorkel data programming paradigm in aims of developing a probabilistic label generating model for SpO2 alarms.
@@ -14,28 +11,36 @@ from IPython import get_ipython
 # - [ ] Edit excel/csv file for pt 580
 # 
 
-# %%
+# In[ ]:
+
+
 EXAMPLE = "smart_alarm"
 
 
-# %%
+# In[ ]:
+
 import numpy as np
 import pandas as pd
 from snorkel.labeling import labeling_function, LFAnalysis
 from snorkel.labeling.apply.dask import PandasParallelLFApplier
 from datetime import datetime, timedelta
 
-# %%
+
+# In[ ]:
+
+
 pd.set_option("display.max_columns", None)
 pd.set_option("display.max_rows", 100)
 np.set_printoptions(threshold=np.inf)
 
-# %% [markdown]
+
 # ## Initialization and Data Loading
 # - **alarms_df**: data for 3,265 SpO2 low alarms from CHOP data
 # - **vitals_df**: data for vital signs of 100 patients related to the alarms data
 
-# %%
+# In[ ]:
+
+
 # For clarity, defining constants for to represent class labels
 
 ABSTAIN = -1
@@ -43,24 +48,30 @@ NOT_SUPPRESSIBLE = 0
 SUPPRESSIBLE = 1
 
 
-# %%
+# In[ ]:
+
+
 # Setting global constant to represent sampling rate of 1 data point per 5 seconds in CHOP data
 
 INTERVAL = 5
 
 
-# %%
+# In[ ]:
+
+
 # Seed for randomized functions
 
 SEED = 42
 
-# %% [markdown]
+
 # The following data is from the CHOP dataset that Chris provided.
 
-# %%
+# In[ ]:
+
+
 from os import path
-from smart_alarm.read_chop_data import read_alarms, read_vitals
-from smart_alarm.compute_mp import apply_compute_mp
+from read_chop_data import read_alarms, read_vitals
+from compute_mp import apply_compute_mp
 
 #prefix = "data/"
 prefix = "/data2/sfpugh/smart-alarm-2.0/chop-alarm-data/"    # if on Ash02, the files already exist there
@@ -82,7 +93,9 @@ else:
     vitals_df = apply_compute_mp(temp_vitals_df, ["SPO2-%","HR","RESP"], INTERVAL, save=True, filename="chop_vitals_with_mp_df.pkl")
 
 
-# %%
+# In[ ]:
+
+
 # Set age factors for labeling functions
 
 age_factors_df = pd.DataFrame({"pt_age_group":[1,2,3,4], 
@@ -91,11 +104,13 @@ age_factors_df = pd.DataFrame({"pt_age_group":[1,2,3,4],
                                 "rr_age_factor":[0.933, 0.9, 0.866, 0.8]}, 
                                 index=[1,2,3,4])
 
-# %% [markdown]
+
 # ## Define Labeling Functions
 # The following labeling functions are translations of rules received from clinicians on what describes NOT_SUPPRESSIBLE and SUPPRESSIBLE SpO2 alarms. See https://docs.google.com/spreadsheets/d/1_1QBVaiWl4SkBy9vEFBk5Uv0HfPWUMX8Sg_IPZoJbfA/edit?usp=sharing.
 
-# %%
+# In[ ]:
+
+
 def get_vitals(pt_id, v_sign, t_start=None, t_end=None):
     """
     Get timeseries of a specific vital sign for a given patient
@@ -902,10 +917,12 @@ def lf_outlier_rr_20(x):
                        t_end=(x.alarm_datetime + timedelta(seconds=10)) )
     return SUPPRESSIBLE if np.any( rr_mp > 2.0 ) else ABSTAIN
 
-# %% [markdown]
+
 # ## Apply Labeling Functions to Data
 
-# %%
+# In[ ]:
+
+
 lfs = [
         lf_long_alarm_60s, lf_long_alarm_65s, lf_long_alarm_70s,
         lf_spo2_below85_over120s, lf_spo2_below80_over100s, lf_spo2_below70_over90s, lf_spo2_below60_over60s, lf_spo2_below50_over30s,
@@ -921,22 +938,23 @@ lfs = [
         lf_spo2_below80_over120s, lf_hr_above220_over10s, lf_hr_below50_over10s, lf_rr_below10_over60s, lf_10alarms_5mins
     ]
 
-# %% [markdown]
+
 # Note: LF application takes approx 25 minutes on Ash, if you have "data/L_alarms_62.npy" then load that instead (2 cells down)
 
-# %%
-#%%time
-#applier = PandasParallelLFApplier(lfs)
-#L_alarms = applier.apply(alarms_df, n_parallel=10, scheduler="threads", fault_tolerant=True)
-#Y_alarms = alarms_df.true_label.values
+# In[ ]:
 
 
-# %%
+#get_ipython().run_cell_magic('time', '', 'applier = PandasParallelLFApplier(lfs)\nL_alarms = applier.apply(alarms_df, n_parallel=10, scheduler="threads", fault_tolerant=True)\nY_alarms = alarms_df.true_label.values')
+
+
+# In[ ]:
+
+
 #np.save("./L_alarms.npy", L_alarms)
-L_alarms = np.load(prefix + "L_alarms_62.npy")
-Y_alarms = alarms_df.true_label.values
+L_data = np.load("/data2/sfpugh/smart-alarm-2.0/chop-alarm-data/L_alarms_62.npy")
+Y_data = alarms_df.true_label.values
 
-# %% [markdown]
+
 # ### LFAnalysis Summary Statistics:
 # - Polarity - the set of unique labels this LF outputs
 # - Coverage - the fraction of the dataset this LF labels
@@ -947,19 +965,7 @@ Y_alarms = alarms_df.true_label.values
 # - Emp. Acc. - empirical accuracy of LF (on data points with non-abstain labels only)
 # - Learned Weight - learned LF weight for combining LFs
 
-# %%
-print(LFAnalysis(L_alarms, lfs).lf_summary(Y=Y_alarms))
+# In[ ]:
 
-# %% [markdown]
-# ## Run Analysis/Experiments
 
-# %%
-import logging
-logging.getLogger().setLevel(logging.WARN)
-
-# %% [markdown]
-# #### E3: Dependencies per Sig Value
-
-# %%
-L_data = np.copy(L_alarms[:,:57])
-Y_data = np.copy(Y_alarms)
+LFAnalysis(L_data, lfs).lf_summary(Y=Y_data)

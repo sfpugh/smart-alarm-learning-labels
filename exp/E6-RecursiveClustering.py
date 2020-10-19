@@ -18,12 +18,15 @@ from utils import predict_at_abstain_rate
 # Seed numpy to get different sequences of subsets
 np.random.seed(int(time()))
 
+# Run source notebook
+from canned_example.canned_STABLE import *
+
 # Copy data from source notebook
-try:
-    L_data_local = np.copy(L_data)
-    Y_data_local = np.copy(Y_data)
-except:
-    raise Exception("Data not defined properly...")
+#try:
+#    L_data_local = np.copy(L_data)
+#    Y_data_local = np.copy(Y_data)
+#except:
+#    raise Exception("Data not defined properly...")
 
 # Extract experiment parameters from arguments
 n_exps = int(sys.argv[1])
@@ -51,21 +54,21 @@ results_mtx = np.empty((n_exps,n_iters,n_metrics), dtype=float)
 results_mtx[:] = np.nan
 
 def thread_experiment(exp, L_data, Y_data):
-    for iter in range(n_iters):
+    i = 0 
+    while i < n_iters:
         # Randomly sample J sets of K LFs
         subsets = np.random.choice(L_data.shape[1], size=(n_subsets,subset_size), replace=with_replacement)
 
-        # Define a new LF for each of the J sets as the prediction 
-        # of a dependency-informed Snorkel model with the K LFs    
+        # Define a new LF for each of the J sets as the prediction of a dependency-informed Snorkel model with the K LFs    
         new_L_data = np.zeros((L_data.shape[0],n_subsets))
 
-        for i, subset in enumerate(subsets):
+        for j, subset in enumerate(subsets):
             deps = CDGAM(L_data[:,subset], k=2, sig=sig, policy=policy, verbose=False, return_more_info=False)
 
             il_model = Informed_LabelModel(deps, cardinality=2)
             il_model.fit(L_data[:,subset], n_epochs=n_epochs, lr=lr)
 
-            new_L_data[:,i] = il_model.predict(L_data[:,subset])
+            new_L_data[:,j] = il_model.predict(L_data[:,subset])
             
         L_data = np.copy(new_L_data)
 
@@ -110,7 +113,7 @@ def thread_experiment(exp, L_data, Y_data):
 #    print("Main: experiment thread {} done".format(exp))
 
 for exp in range(n_exps):
-    thread_experiment(exp, L_data_local, Y_data_local)
+    thread_experiment(exp, L_data, Y_data)
     print("exp {} finished...".format(exp))
 
 
@@ -146,4 +149,6 @@ mask = ~np.isnan(results_mtx[:,:,3])
 d_deps = [m[i] for m, i in zip(results_mtx[:,:,3].T, mask.T)]
 ax3.boxplot(d_deps, positions=range(1,n_iters+1))
 ax3.set(xlabel="Iteration", ylabel="Num Dependencies (CDGAM)")
+# Save and display
+plt.savefig("e6_(" + ",".join(sys.argv[1:]) + ").png")
 plt.show()

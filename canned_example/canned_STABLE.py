@@ -16,19 +16,19 @@ from snorkel.labeling.model.label_model import LabelModel
 
 
 # Parameters for the analysis
-N_LFS = 10
+N_LFS = 50
 N_DPS = 10000
 
-SEED_RNG = False
-SEED = 12345
+SEED_RNG = True
+SEED = 1234
 
 
 # In[3]:
 
 
 # Defining labels for sake of clarity
-ABSTAIN = 0
-NEGATIVE = -1
+ABSTAIN = -1
+NEGATIVE = 0
 POSITIVE = 1
 
 
@@ -70,20 +70,25 @@ def f(p_f, p_A, x):
     z_f = np.random.binomial(1, p_f, 1)[0]
     z_A = np.random.binomial(1, p_A, 1)[0]
     
-    return int( (f_star(x) * z_f - f_star(x) * (1 - z_f)) * (1 - z_A) )
+    x = int( (f_star(x) * z_f - f_star(x) * (1 - z_f)) * (1 - z_A) )
+    if x == 1:
+        return POSITIVE
+    elif x == -1:
+        return NEGATIVE
+    else:
+        return ABSTAIN
 
 
-# In[8]:
+# In[18]:
 
-
-lfs = []
 
 # Generate several labeling functions for different values of p_f and p_A
+lfs = []
 for i in range(N_LFS):
     p_f = np.random.rand(1)[0]
     p_A = np.random.rand(1)[0]
     
-    @labeling_function(name="lf{}({:.4f},{:.4f})".format(i, p_f, p_A))
+    @labeling_function(name="LF{}({:.4f},{:.4f})".format(i, p_f, p_A))
     def lf(x):
         return f(p_f, p_A, x)
     
@@ -92,23 +97,17 @@ for i in range(N_LFS):
 
 # ## Apply Labeling Functions to the Data
 
-# In[9]:
+# In[19]:
 
 
 applier = LFApplier(lfs)
 L_data = applier.apply(X_data, progress_bar=True)
 
 
-# In[10]:
+# In[20]:
 
 
 LFAnalysis(L_data, lfs=lfs).lf_summary(Y_data)
 
 
 # ## Experiments
-
-# In[ ]:
-
-
-
-
