@@ -20,9 +20,6 @@ subset_size = int(sys.argv[4])          # K
 with_replacement = bool(sys.argv[5])
 abstain_rate = float(sys.argv[6])       # if < 0 then no abstain rate requested
 
-# Seed numpy to get different sequences of subsets
-np.random.seed(int(time()))
-
 # Run source notebook and to set up data, labeling functions, and label matricies
 #from canned_example.canned_STABLE import *
 sys.path.append("/home/sfpugh/smart-alarm-learning-labels/smart_alarm")
@@ -46,12 +43,17 @@ scorer = Scorer(metrics=["accuracy","f1"], custom_metric_funcs=my_metrics)
 
 ## Define the experiment
 def experiment(exp, L_Data, Y_Data):
+    # Seed numpy to get different sequences of subsets
+    np.random.seed(exp)
+
     i = 0
     while i < n_iters:
         i += 1
         
         # Randomly sample J sets of K LFs
         subsets = np.random.choice(L_Data.shape[1], size=(n_subsets,subset_size), replace=with_replacement)
+        print(subsets)
+        return 0
         
         # Define a new LF for each of the J sets as the prediction of a dependency-informed Snorkel model with the K LFs    
         new_L_Data = np.zeros((L_Data.shape[0],n_subsets))
