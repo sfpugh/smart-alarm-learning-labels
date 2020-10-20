@@ -52,8 +52,6 @@ def experiment(exp, L_Data, Y_Data):
         
         # Randomly sample J sets of K LFs
         subsets = np.random.choice(L_Data.shape[1], size=(n_subsets,subset_size), replace=with_replacement)
-        print(subsets)
-        return 0
         
         # Define a new LF for each of the J sets as the prediction of a dependency-informed Snorkel model with the K LFs    
         new_L_Data = np.zeros((L_Data.shape[0],n_subsets))
