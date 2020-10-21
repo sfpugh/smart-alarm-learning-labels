@@ -9,7 +9,7 @@ from time import time
 from itertools import combinations
 
 from snorkel.analysis import Scorer
-from utils import predict_at_abstain_rate
+from utils import predict_at_abstain_rate_
 from Our_Monitors.CD_Monitor import Informed_LabelModel
 
 # Extract experimental parameters from arguments
@@ -18,7 +18,6 @@ n_iters = int(sys.argv[2])              # N
 n_subsets = int(sys.argv[3])            # J
 subset_size = int(sys.argv[4])          # K
 with_replacement = bool(sys.argv[5])
-abstain_rate = float(sys.argv[6])       # if < 0 then no abstain rate requested
 
 # Run source notebook and to set up data, labeling functions, and label matricies
 #from canned_example.canned_STABLE import *
@@ -34,6 +33,7 @@ except:
 # Snorkel model parameters
 n_epochs = 100
 lr = 0.01
+abstain_rates = [0.5, 0.25, 0.5]
 
 # Set up Scorer
 n_metrics = 3
@@ -75,9 +75,18 @@ def experiment(exp, L_Data, Y_Data):
     il_model = Informed_LabelModel(deps, cardinality=2)
     il_model.fit(L_Data[:,subset], n_epochs=n_epochs, lr=lr)
     
-    Y_pred = il_model.predict(L_Data[:,subset])
-    scores = scorer.score(Y_Data, preds=Y_pred)
-    print("Experiment {} scores: {}".format(exp, scores))
+
+    Y_pred, Y_prob = il_model.predict(L_Data[:,subset], return_probs=True)
+
+    print("E{}: {}".format(exp,scorer.score(Y_Data, preds=Y_pred)))
+
+    scores = np.empty((len(abstain_rates),n_metrics))
+    scores[:] = np.nan
+    for x, rate in enumerate(abstain_rates):
+        Y_pred = predict_at_abstain_rate(Y_prob, rate)
+        scores[x,:] = list( scorer.score(Y_Data, preds=Y_pred).values() )
+
+    print("Experiment {} scores:\n{}".format(exp, scores))
 
 
 
