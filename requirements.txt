@@ -42,7 +42,7 @@ matrixprofile-ts==0.0.9
 mistune==0.8.4
 msgpack==1.0.0
 munkres==1.1.2
-nbconvert==5.6.1
+nbconvert==6.5.1
 nbformat==5.0.7
 networkx==2.3
 notebook==6.0.3
